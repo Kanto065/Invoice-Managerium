@@ -146,7 +146,7 @@ exports.loginUser = catchAsyncError(async (req, res, next) => {
   }
 
   //   create a refresh token
-  let refreshToken = refreshJWT(email, existUser.role);
+  let refreshToken = refreshJWT(email);
   await User.updateOne(
     { email },
     {
@@ -170,7 +170,7 @@ exports.loginUser = catchAsyncError(async (req, res, next) => {
   );
 
   //   create a access token
-  let access_token = createJWT(email, existUser.role);
+  let access_token = createJWT(email);
   res.cookie(process.env.REFRESH_COOKIE_NAME, refreshToken, {
     maxAge:
       Date.now() + 1000 * 60 * 60 * 24 * process.env.REFRESH_COOKIE_EXPIRES,
@@ -207,7 +207,7 @@ exports.adminLogin = catchAsyncError(async (req, res, next) => {
   }
 
   //   create a refresh token
-  let refreshToken = refreshJWT(email, existUser.role);
+  let refreshToken = refreshJWT(email);
   await User.updateOne(
     { email },
     {
@@ -231,7 +231,7 @@ exports.adminLogin = catchAsyncError(async (req, res, next) => {
   );
 
   //   create a access token
-  let access_token = createJWT(email, existUser.role);
+  let access_token = createJWT(email);
   res.cookie(process.env.REFRESH_COOKIE_NAME, refreshToken, {
     maxAge:
       Date.now() + 1000 * 60 * 60 * 24 * process.env.REFRESH_COOKIE_EXPIRES,
@@ -698,7 +698,7 @@ exports.googleAuth = catchAsyncError(async (req, res, next) => {
     }
   }
   // Generate JWT
-  const access_token = createJWT(user.email, user.role);
+  const access_token = createJWT(user.email);
   return res.status(200).json({
     success: true,
     user,
