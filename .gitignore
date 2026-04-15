@@ -1,0 +1,6 @@
+node_modules
+info.log
+error.log
+.env
+.env.local
+.env.production
