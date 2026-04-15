@@ -30,7 +30,7 @@ exports.registerUser = catchAsyncError(async (req, res, next) => {
 
   const existUser = await User.findOne({ email });
   if (existUser) {
-    return next(new ErrorHandler("User already exist!", 200));
+    return next(new ErrorHandler("User already exist!", 409));
   }
 
   //   password hashing
@@ -146,7 +146,7 @@ exports.loginUser = catchAsyncError(async (req, res, next) => {
   }
 
   //   create a refresh token
-  let refreshToken = refreshJWT(email);
+  let refreshToken = refreshJWT(email, existUser.role);
   await User.updateOne(
     { email },
     {
@@ -170,7 +170,7 @@ exports.loginUser = catchAsyncError(async (req, res, next) => {
   );
 
   //   create a access token
-  let access_token = createJWT(email);
+  let access_token = createJWT(email, existUser.role);
   res.cookie(process.env.REFRESH_COOKIE_NAME, refreshToken, {
     maxAge:
       Date.now() + 1000 * 60 * 60 * 24 * process.env.REFRESH_COOKIE_EXPIRES,
@@ -207,7 +207,7 @@ exports.adminLogin = catchAsyncError(async (req, res, next) => {
   }
 
   //   create a refresh token
-  let refreshToken = refreshJWT(email);
+  let refreshToken = refreshJWT(email, existUser.role);
   await User.updateOne(
     { email },
     {
@@ -231,7 +231,7 @@ exports.adminLogin = catchAsyncError(async (req, res, next) => {
   );
 
   //   create a access token
-  let access_token = createJWT(email);
+  let access_token = createJWT(email, existUser.role);
   res.cookie(process.env.REFRESH_COOKIE_NAME, refreshToken, {
     maxAge:
       Date.now() + 1000 * 60 * 60 * 24 * process.env.REFRESH_COOKIE_EXPIRES,
@@ -698,7 +698,7 @@ exports.googleAuth = catchAsyncError(async (req, res, next) => {
     }
   }
   // Generate JWT
-  const access_token = createJWT(user.email);
+  const access_token = createJWT(user.email, user.role);
   return res.status(200).json({
     success: true,
     user,

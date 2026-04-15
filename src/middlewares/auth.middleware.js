@@ -35,7 +35,7 @@ const authCheck = async (req, res, next) => {
 const roleCheck = (...roles) => {
   return (req, res, next) => {
     if (!roles.includes(req?.user?.role)) {
-      return next(new ErrorHandler(`Unauthorized!`, 401));
+      return next(new ErrorHandler(`Forbidden! You don't have permission.`, 403));
     }
     next();
   };

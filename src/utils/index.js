@@ -20,10 +20,11 @@ async function getEmailVerificationToken(user) {
 }
 
 // creating a refresh token
-function refreshJWT(email) {
+function refreshJWT(email, role) {
   const token = jwt.sign(
     {
       email: email,
+      role: role,
     },
     process.env.JWT_SECRET_KEY,
     {
@@ -34,10 +35,11 @@ function refreshJWT(email) {
 }
 
 // creating a access token
-function createJWT(email) {
+function createJWT(email, role) {
   const token = jwt.sign(
     {
       email: email,
+      role: role,
     },
     process.env.JWT_SECRET_KEY,
     {
