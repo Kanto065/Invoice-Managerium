@@ -25,6 +25,7 @@ const varientRouter = require("./routes/varient.route");
 const varientAttributrRouter = require("./routes/varient-attribute.route");
 const shopRouter = require("./routes/shop.route");
 const subscriptionRouter = require("./routes/subscription.route");
+const invoiceRouter = require("./routes/invoice.route");
 const { default: mongoose } = require("mongoose");
 
 // ==> middlewares <==
@@ -113,6 +114,7 @@ app.use("/api/order", orderRouter);
 app.use("/api/setting", settingRouter);
 app.use("/api/shop", shopRouter);
 app.use("/api/subscription", subscriptionRouter);
+app.use("/api/invoice", invoiceRouter);
 app.use("/*", (_req, res, _next) => {
   return res.status(400).json({
     success: false,
