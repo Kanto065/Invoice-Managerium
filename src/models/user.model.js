@@ -32,8 +32,8 @@ const userSchema = new mongoose.Schema(
     role: {
       required: true,
       type: String,
-      enum: ["admin", "customer"],
-      default: "customer",
+      enum: ["admin", "owner"],
+      default: "owner",
     },
     provider: {
       required: true,
@@ -50,11 +50,21 @@ const userSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
+    businessName: {
+      type: String,
+      default: "",
+    },
+    contactNumber: {
+      type: String,
+      default: "",
+    },
     address: {
+      address_line1: { type: String, default: "" },
+      address_line2: { type: String, default: "" },
+      city: { type: String, default: "" },
+      state: { type: String, default: "" },
+      postal_code: { type: String, default: "" },
       country: { type: String, default: "" },
-      cityState: { type: String, default: "" },
-      postalCode: { type: String, default: "" },
-      taxId: { type: String, default: "" },
     },
     socialLinks: {
       facebook: { type: String, default: "" },

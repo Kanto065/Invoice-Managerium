@@ -54,14 +54,43 @@ exports.registerUser = catchAsyncError(async (req, res, next) => {
       body: verifyMailTemplate(verifyUrl),
     });
   } catch (error) {
+    // Email failed but user is created — continue with auto-login
     newUser.emailVerifyToken = undefined;
     newUser.emailVerifyExpire = undefined;
     await newUser.save();
-    return next(new ErrorHandler("Faild to sent email!", 500));
   }
+
+  // Auto-login: generate tokens so the user can proceed to shop setup
+  const refreshToken = refreshJWT(email);
+  await User.updateOne({ email }, { $set: { refreshToken } });
+
+  const registeredUser = await User.findOne(
+    { email },
+    {
+      password: 0,
+      __v: 0,
+      emailVerifyExpire: 0,
+      emailVerifyToken: 0,
+      resetPasswordExpire: 0,
+      resetPasswordToken: 0,
+      refreshToken: 0,
+    }
+  );
+
+  const access_token = createJWT(email);
+  res.cookie(process.env.REFRESH_COOKIE_NAME, refreshToken, {
+    maxAge:
+      Date.now() + 1000 * 60 * 60 * 24 * process.env.REFRESH_COOKIE_EXPIRES,
+    httpOnly: true,
+    secure: process.env.NODE_END === "production" ? true : false,
+    sameSite: "Lax",
+  });
+
   return res.status(201).json({
     success: true,
-    message: `A verification email sent to ${email}!`,
+    user: registeredUser,
+    access_token,
+    message: `Account created! A verification email was sent to ${email}.`,
   });
 });
 
@@ -306,7 +335,7 @@ exports.logoutUser = catchAsyncError(async (req, res, next) => {
 
 // ==> update user profile <==
 exports.updateProfile = catchAsyncError(async (req, res, next) => {
-  let { name, phone, bio, address, socialLinks } = req.body;
+  let { name, phone, bio, businessName, contactNumber, address, socialLinks } = req.body;
   const userId = req.user._id;
   const user = await User.findById(req.user._id);
   if (!user) {
@@ -317,6 +346,8 @@ exports.updateProfile = catchAsyncError(async (req, res, next) => {
   if (name) updatedData.name = name || user.name;
   if (phone) updatedData.phone = phone || user.phone;
   if (bio !== undefined) updatedData.bio = bio;
+  if (businessName !== undefined) updatedData.businessName = businessName;
+  if (contactNumber !== undefined) updatedData.contactNumber = contactNumber;
   if (address) {
     updatedData.address = {
       ...user.address,

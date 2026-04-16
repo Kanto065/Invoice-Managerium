@@ -23,6 +23,8 @@ const shippingAddressRouter = require("./routes/shipping-address.route");
 const orderRouter = require("./routes/order.route");
 const varientRouter = require("./routes/varient.route");
 const varientAttributrRouter = require("./routes/varient-attribute.route");
+const shopRouter = require("./routes/shop.route");
+const subscriptionRouter = require("./routes/subscription.route");
 const { default: mongoose } = require("mongoose");
 
 // ==> middlewares <==
@@ -109,6 +111,8 @@ app.use("/api/shipping", shippingRouter);
 app.use("/api/shipping-address", shippingAddressRouter);
 app.use("/api/order", orderRouter);
 app.use("/api/setting", settingRouter);
+app.use("/api/shop", shopRouter);
+app.use("/api/subscription", subscriptionRouter);
 app.use("/*", (_req, res, _next) => {
   return res.status(400).json({
     success: false,

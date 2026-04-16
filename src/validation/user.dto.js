@@ -50,12 +50,16 @@ const updateUserProfileSchema = zod.object({
     .optional(),
   avatar: zod.instanceof(fileSchema).optional(),
   bio: zod.string("Bio must be a string!").trim().optional(),
+  businessName: zod.string("Business name must be a string!").trim().optional(),
+  contactNumber: zod.string("Contact number must be a string!").trim().optional(),
   address: zod
     .object({
+      address_line1: zod.string().trim().optional(),
+      address_line2: zod.string().trim().optional(),
+      city: zod.string().trim().optional(),
+      state: zod.string().trim().optional(),
+      postal_code: zod.string().trim().optional(),
       country: zod.string().trim().optional(),
-      cityState: zod.string().trim().optional(),
-      postalCode: zod.string().trim().optional(),
-      taxId: zod.string().trim().optional(),
     })
     .optional(),
   socialLinks: zod
