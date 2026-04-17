@@ -1,0 +1,7 @@
+-owner muli shop setup 
+-pricing model based on muli shop
+-modarator adding
+-subscription upgrade as owner
+-renew subscription
+-notification //
+-recuring customer search //customer 
