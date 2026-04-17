@@ -67,7 +67,13 @@ userRouter
     UserController.forgotPassword
   );
 userRouter
-  .route("/reset-password/:token")
+  .route("/verify-otp")
+  .post(
+    dtoValidate(UserDTO.verifyOtpSchema),
+    UserController.verifyOtp
+  );
+userRouter
+  .route("/reset-password")
   .post(
     dtoValidate(UserDTO.resetUserPasswordSchema),
     UserController.resetPassword

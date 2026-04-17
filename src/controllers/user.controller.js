@@ -474,7 +474,7 @@ exports.updatePassword = catchAsyncError(async (req, res, next) => {
 
   const user = await User.findById(req?.user?._id);
 
-  if (user !== "credentials") {
+  if (user?.provider !== "credentials") {
     return next(
       new ErrorHandler(
         "Not credential user! Not allowed to update password!",
@@ -519,15 +519,14 @@ exports.forgotPassword = catchAsyncError(async (req, res, next) => {
       )
     );
   }
-  // Get reset password token
+  // Get reset password token (OTP)
   const resetToken = await getResetPasswordToken(existUser);
-  const resetPasswordUrl = `${process.env.CLIENT_URL}/reset-password/${resetToken}`;
 
   try {
     await mail({
       email: existUser.email,
       subject: `[${process.env.APP_NAME}] Reset Your Password`,
-      body: forgetPasswordMailTemplate(resetPasswordUrl),
+      body: `Your OTP for password reset is: ${resetToken}. It is valid for 10 minutes.`,
     });
     return res.status(200).json({
       message: `An email sent to ${existUser.email}!`,
@@ -540,16 +539,46 @@ exports.forgotPassword = catchAsyncError(async (req, res, next) => {
   }
 });
 
+// ==> verify otp <==
+exports.verifyOtp = catchAsyncError(async (req, res, next) => {
+  const { otp } = req.body;
+  if (!otp) {
+    return next(new ErrorHandler("OTP is required", 400));
+  }
+
+  const resetPasswordToken = crypto
+    .createHash("sha256")
+    .update(otp)
+    .digest("hex");
+
+  const existUser = await User.findOne({
+    resetPasswordToken: resetPasswordToken,
+    resetPasswordExpire: { $gt: Date.now() },
+  });
+
+  if (!existUser) {
+    return next(new ErrorHandler("OTP is invalid or has expired!", 400));
+  }
+
+  return res.status(200).json({
+    success: true,
+    message: "OTP verified successfully",
+  });
+});
+
 // ==> reset password <==
 exports.resetPassword = catchAsyncError(async (req, res, next) => {
-  const { newPassword, confirmPassword } = req.body;
+  const { otp, newPassword, confirmPassword } = req.body;
+  if (!otp) {
+    return next(new ErrorHandler("OTP is required", 400));
+  }
   if (newPassword !== confirmPassword) {
     return next(new ErrorHandler("Password does not match", 400));
   }
   // Creating token hash
   const resetPasswordToken = crypto
     .createHash("sha256")
-    .update(req.params.token)
+    .update(otp)
     .digest("hex");
 
   const existUser = await User.findOne({

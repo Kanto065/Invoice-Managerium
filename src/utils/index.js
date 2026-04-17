@@ -70,15 +70,15 @@ async function generateNewAccessToken(req, res, next) {
 
 // Generating reset password token
 async function getResetPasswordToken(user) {
-  // generating reset token
-  const resetToken = crypto.randomBytes(20).toString("hex");
+  // generating 4-digit OTP
+  const resetToken = Math.floor(1000 + Math.random() * 9000).toString();
   // hashing and adding to userSchema
   user.resetPasswordToken = crypto
     .createHash("sha256")
     .update(resetToken)
     .digest("hex");
   user.resetPasswordExpire =
-    Date.now() + 1000 * 60 * process.env.RESET_PASSWORD_EXPIRE;
+    Date.now() + 1000 * 60 * (process.env.RESET_PASSWORD_EXPIRE || 10);
   await user.save();
   return resetToken;
 }

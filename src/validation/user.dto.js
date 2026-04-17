@@ -94,7 +94,18 @@ const formgetPasswordSchema = zod.object({
   email: zod.email("Invalid email!").trim().nonempty("Email is required!"),
 });
 
+const verifyOtpSchema = zod.object({
+  otp: zod
+    .string()
+    .length(4, "OTP must be exactly 4 digits!")
+    .nonempty("OTP is required!"),
+});
+
 const resetUserPasswordSchema = zod.object({
+  otp: zod
+    .string()
+    .length(4, "OTP must be exactly 4 digits!")
+    .nonempty("OTP is required!"),
   newPassword: zod
     .string()
     .min(8, "New password must be at least 8 character!")
@@ -115,6 +126,7 @@ module.exports = {
   updateUserProfileSchema,
   updateUserPasswordSchema,
   formgetPasswordSchema,
+  verifyOtpSchema,
   resetUserPasswordSchema,
   blockUnblockUserSchema,
 };
