@@ -20,11 +20,6 @@ const subscriptionPlanSchema = new mongoose.Schema(
             type: Number,
             default: 0,
         },
-        billingCycle: {
-            type: String,
-            enum: ["monthly", "yearly", "lifetime"],
-            default: "monthly",
-        },
 
         // ── Limits ──
         maxShops: {
@@ -58,6 +53,9 @@ const subscriptionPlanSchema = new mongoose.Schema(
         sortOrder: {
             type: Number,
             default: 0,
+        },
+        deactivatedAt: {
+            type: Date,
         },
     },
     { timestamps: true }

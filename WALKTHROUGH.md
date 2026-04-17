@@ -138,6 +138,18 @@ All UI uses `var(--ds-*)` CSS tokens from `theme.css`:
 
 ---
 
-## Next Up
-- **Phase 2** — Invoice generation + real receipt printing
-- **Phase 3** — Products/categories scoped per shop (`shopId`)
+## Phase 3 — Product Management & CRUD
+
+### Changes
+- **`ProductManagement.tsx`** — Created a separate mobile-first UI for product CRUD operations, maintaining the DS design system. Replaced mock items with live data.
+- **Backend API Integration** — `authedFormDataPost` and `authedFormDataPut` helpers to handle `multipart/form-data` uploads securely.
+- **Image Optimization** — Real-time image compression using `sharp` within the `image-optimizer.middleware.js`, squashing uploaded image sizes (max 20MB allowed) to `1920x1920` WebP/JPEG/PNG format without visible quality loss.
+- **Variant Management** — Transitioned products to use a robust `Varient` structure (`varient-attribut.model.js` and `varient.model.js`) rather than just flat categories. Seeded base variant sizes (`S`, `M`, `L`, `XL`).
+- **Orphan Image Cleanup** — Scheduled a `node-cron` job (`cleanup_images.js`) to run every Sunday at midnight, actively flushing out deleted or unlinked images uploaded over time to prevent server bloat. Allows `product_placeholder.png` as fallback for empty uploads.
+
+---
+
+## What Remains / Next Up
+- **Phase 3 Completion (Crucial)** — **Scoped Entities**: Products, Brands, Categories, and Variants are currently *global*. They need to be updated to include a `shopId` and the backend `product.controller.js` must filter CRUD operations so owners can only modify their own shop's inventory.
+- **Phase 2 (Invoice Generation)** — Real invoice and receipt generation, tied to physical shop branding (`receiptConfig`).
+- **Search & Filtering UI** — The dashboard could use pagination or filters for long lists of products.

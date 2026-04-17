@@ -6,6 +6,11 @@ const productSchema = new mongoose.Schema(
       required: true,
       type: String,
     },
+    shopId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "shops",
+      required: function() { return !this.isDemo; },
+    },
     slug: {
       required: true,
       type: String,
@@ -76,6 +81,10 @@ const productSchema = new mongoose.Schema(
     freeDelivery: {
       type: Boolean,
       required: false,
+      default: false,
+    },
+    isDemo: {
+      type: Boolean,
       default: false,
     },
     status: {

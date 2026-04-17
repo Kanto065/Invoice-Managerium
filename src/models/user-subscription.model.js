@@ -12,6 +12,11 @@ const userSubscriptionSchema = new mongoose.Schema(
             type: mongoose.Types.ObjectId,
             ref: "subscription_plans",
         },
+        billingCycleId: {
+            required: true,
+            type: mongoose.Types.ObjectId,
+            ref: "billing_cycles",
+        },
 
         status: {
             required: true,

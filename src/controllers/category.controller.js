@@ -13,7 +13,7 @@ const { nestCategories } = require("../utils");
 exports.createCategory = catchAsyncError(async (req, res, next) => {
   const { name, parentId } = req.body;
 
-  const existCategory = await Category.findOne({ name ,parentId});
+  const existCategory = await Category.findOne({ name, parentId });
   if (existCategory) {
     return next(new ErrorHandler("Category already exist!", 400));
   }

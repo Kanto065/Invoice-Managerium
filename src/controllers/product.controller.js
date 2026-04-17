@@ -12,6 +12,8 @@ const Varient = require("../models/varient.model");
 const ErrorHandler = require("../helper/error.helper");
 const VarientAttribute = require("../models/varient-attribut.model");
 const ProductImages = require("../models/product-image.model");
+const UserSubscription = require("../models/user-subscription.model");
+const Shop = require("../models/shop.model");
 
 // ==> create a product <==
 exports.createProduct = catchAsyncError(async (req, res, next) => {
@@ -27,6 +29,7 @@ exports.createProduct = catchAsyncError(async (req, res, next) => {
     location,
     stock,
     featured,
+    shopId,
   } = req.body;
   // Removed image validation length check to allow zero images
   // Check if product already exists
@@ -41,9 +44,28 @@ exports.createProduct = catchAsyncError(async (req, res, next) => {
       message: "Product already exists! Updated the stock.",
     });
   } else {
+    // 1️⃣ Verify Shop Ownership
+    const shop = await Shop.findById(shopId);
+    if (!shop) return next(new ErrorHandler("Shop not found", 404));
+    
+    // Admin can create anywhere, owners only in their shops
+    if (req.user.role !== "admin" && shop.ownerId.toString() !== req.user._id.toString()) {
+      return next(new ErrorHandler("You don't have permission to add products to this shop", 403));
+    }
+
+    // 2️⃣ Check Subscription Limits
+    const userSub = await UserSubscription.findOne({ userId: shop.ownerId, status: "active" }).populate("planId");
+    const maxProducts = userSub?.planId?.maxProductsPerShop ?? 5; // Default to free limit if no sub
+    const currentCount = await Product.countDocuments({ shopId, isDemo: false });
+    
+    if (currentCount >= maxProducts) {
+      return next(new ErrorHandler(`Product limit reached for this shop (${maxProducts} products max). Please upgrade your plan.`, 403));
+    }
+
     let createData = {
       name,
       slug: slugify(name, { lower: true }),
+      shopId,
       varientId,
       description,
       price,
@@ -97,10 +119,17 @@ exports.updateProduct = catchAsyncError(async (req, res, next) => {
     freeDelivery,
     status,
   } = req.body;
-  const id = req.params.id;
   const existProduct = await Product.findById(id);
   if (!existProduct) {
     return next(new ErrorHandler("Product not found!", 404));
+  }
+
+  // 1️⃣ Verify Shop Ownership
+  if (req.user.role !== "admin") {
+    const shop = await Shop.findById(existProduct.shopId);
+    if (!shop || shop.ownerId.toString() !== req.user._id.toString()) {
+      return next(new ErrorHandler("You don't have permission to update this product", 403));
+    }
   }
 
   let updateData = {};
@@ -173,9 +202,17 @@ exports.getAllProduct = catchAsyncError(async (req, res, next) => {
   const skip = (page - 1) * limit;
 
   // Query params
-  const { activeOnly, type, name, varient, location } = req.query;
+  const { activeOnly, type, name, varient, location, demoOnly, shopId } = req.query;
 
   let match = {};
+
+  if (demoOnly === "true") {
+    match.isDemo = true;
+  } else {
+    if (!shopId) return next(new ErrorHandler("shopId is required", 400));
+    match.shopId = new mongoose.Types.ObjectId(shopId);
+    match.isDemo = false;
+  }
 
   // 🔹 Base Filters
   if (activeOnly === "true") {
@@ -353,15 +390,15 @@ exports.getAllProduct = catchAsyncError(async (req, res, next) => {
           ...lookups,
           ...(type === "discount"
             ? [
-                {
-                  $match: {
-                    $or: [
-                      { discount: { $ne: {} } }, // has direct discount
-                      { tierDiscounts: { $exists: true, $ne: [] } }, // or has tier discounts
-                    ],
-                  },
+              {
+                $match: {
+                  $or: [
+                    { discount: { $ne: {} } }, // has direct discount
+                    { tierDiscounts: { $exists: true, $ne: [] } }, // or has tier discounts
+                  ],
                 },
-              ]
+              },
+            ]
             : []),
           ...(Object.keys(sort).length ? [{ $sort: sort }] : []),
           { $skip: skip },
@@ -372,15 +409,15 @@ exports.getAllProduct = catchAsyncError(async (req, res, next) => {
           ...lookups,
           ...(type === "discount"
             ? [
-                {
-                  $match: {
-                    $or: [
-                      { discount: { $ne: {} } }, // has direct discount
-                      { tierDiscounts: { $exists: true, $ne: [] } }, // or has tier discounts
-                    ],
-                  },
+              {
+                $match: {
+                  $or: [
+                    { discount: { $ne: {} } }, // has direct discount
+                    { tierDiscounts: { $exists: true, $ne: [] } }, // or has tier discounts
+                  ],
                 },
-              ]
+              },
+            ]
             : []),
           ...(Object.keys(sort).length ? [{ $sort: sort }] : []),
           { $count: "count" },
@@ -554,6 +591,14 @@ exports.activeInactiveProduct = catchAsyncError(async (req, res, next) => {
     return next(new ErrorHandler("Product not found!", 404));
   }
 
+  // 1️⃣ Verify Shop Ownership
+  if (req.user.role !== "admin") {
+    const shop = await Shop.findById(existProduct.shopId);
+    if (!shop || shop.ownerId.toString() !== req.user._id.toString()) {
+      return next(new ErrorHandler("You don't have permission to update this product", 403));
+    }
+  }
+
   await Product.updateOne(
     {
       _id: id,
@@ -575,6 +620,14 @@ exports.deleteProduct = catchAsyncError(async (req, res, next) => {
   const existProduct = await Product.findById(id);
   if (!existProduct) {
     return next(new ErrorHandler("Product not found!", 404));
+  }
+
+  // 1️⃣ Verify Shop Ownership
+  if (req.user.role !== "admin") {
+    const shop = await Shop.findById(existProduct.shopId);
+    if (!shop || shop.ownerId.toString() !== req.user._id.toString()) {
+      return next(new ErrorHandler("You don't have permission to delete this product", 403));
+    }
   }
 
   await existProduct.deleteOne();

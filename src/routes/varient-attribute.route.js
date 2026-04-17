@@ -20,7 +20,7 @@ varientAttributrRouter
   .route("/all")
   .get(
     authCheck,
-    roleCheck("admin"),
+    roleCheck("admin", "owner"),
     VarientAttributeController.getAllVarientAttributes
   );
 

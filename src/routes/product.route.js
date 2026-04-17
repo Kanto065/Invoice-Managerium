@@ -14,7 +14,7 @@ productRouter
   .route("/create")
   .post(
     authCheck,
-    roleCheck("admin"),
+    roleCheck("admin", "owner"),
     fileUploadMiddleware.imagesUpload.array("images", 10),
     optimizeImages,
     dtoValidate(ProductDTO.createProductSchema),
@@ -26,21 +26,21 @@ productRouter
   .route("/:id")
   .put(
     authCheck,
-    roleCheck("admin"),
+    roleCheck("admin", "owner"),
     fileUploadMiddleware.imagesUpload.array("images", 10),
     optimizeImages,
     dtoValidate(ProductDTO.updateProductSchema),
     ProductController.updateProduct
   )
   .get(ProductController.getSingleProduct)
-  .delete(authCheck, roleCheck("admin"), ProductController.deleteProduct);
+  .delete(authCheck, roleCheck("admin", "owner"), ProductController.deleteProduct);
 
 productRouter
   .route("/active-inactive/:id")
   .put(
     dtoValidate(ProductDTO.activeInactiveProductSchema),
     authCheck,
-    roleCheck("admin"),
+    roleCheck("admin", "owner"),
     ProductController.activeInactiveProduct
   );
 

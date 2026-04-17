@@ -41,6 +41,10 @@ subscriptionRouter
     )
     .delete(authCheck, roleCheck("admin"), SubController.deletePlan);
 
+subscriptionRouter
+    .route("/admin/plans/active-inactive/:id")
+    .put(authCheck, roleCheck("admin"), SubController.activeInactivePlan);
+
 // ── Admin: manage subscriptions ──
 subscriptionRouter
     .route("/admin/subscriptions")

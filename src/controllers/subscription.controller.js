@@ -1,6 +1,7 @@
 const { catchAsyncError } = require("../middlewares/catchAsync.middleware");
 const SubscriptionPlan = require("../models/subscription-plan.model");
 const UserSubscription = require("../models/user-subscription.model");
+const BillingCycle = require("../models/billing-cycle.model");
 const ErrorHandler = require("../helper/error.helper");
 
 // Helper: slugify plan name
@@ -23,7 +24,6 @@ exports.createPlan = catchAsyncError(async (req, res, next) => {
         name,
         description,
         price,
-        billingCycle,
         maxShops,
         maxModeratorsPerShop,
         maxProductsPerShop,
@@ -44,7 +44,6 @@ exports.createPlan = catchAsyncError(async (req, res, next) => {
         slug,
         description: description || "",
         price,
-        billingCycle: billingCycle || "monthly",
         maxShops: maxShops ?? 1,
         maxModeratorsPerShop: maxModeratorsPerShop ?? 0,
         maxProductsPerShop: maxProductsPerShop ?? 10,
@@ -141,7 +140,7 @@ exports.deletePlan = catchAsyncError(async (req, res, next) => {
 // ===> Purchase a plan <===
 exports.purchasePlan = catchAsyncError(async (req, res, next) => {
     const userId = req.user._id;
-    const { planId, paymentMethod, paymentReference, paymentAmount } = req.body;
+    const { planId, billingCycleId, paymentMethod, paymentReference } = req.body;
 
     const plan = await SubscriptionPlan.findById(planId);
     if (!plan) {
@@ -150,6 +149,14 @@ exports.purchasePlan = catchAsyncError(async (req, res, next) => {
     if (!plan.isActive) {
         return next(new ErrorHandler("This plan is no longer available!", 400));
     }
+
+    const billingCycle = await BillingCycle.findOne({ _id: billingCycleId, isActive: true });
+    if (!billingCycle) {
+        return next(new ErrorHandler("Invalid or inactive billing cycle!", 400));
+    }
+
+    let calculatedAmount = (plan.price * billingCycle.durationInMonths) - billingCycle.discountAmount;
+    if (calculatedAmount < 0) calculatedAmount = 0;
 
     // Check if user already has a pending request
     const pendingSub = await UserSubscription.findOne({
@@ -168,10 +175,11 @@ exports.purchasePlan = catchAsyncError(async (req, res, next) => {
     const subscription = await UserSubscription.create({
         userId,
         planId,
+        billingCycleId,
         status: "pending",
         paymentMethod,
         paymentReference,
-        paymentAmount,
+        paymentAmount: calculatedAmount,
     });
 
     return res.status(201).json({
@@ -244,16 +252,15 @@ exports.handleSubscription = catchAsyncError(async (req, res, next) => {
 
     if (action === "approve") {
         const plan = await SubscriptionPlan.findById(sub.planId);
+        const billingCycle = await BillingCycle.findById(sub.billingCycleId);
         const now = new Date();
         let endDate = new Date(now);
 
-        if (plan.billingCycle === "monthly") {
-            endDate.setMonth(endDate.getMonth() + 1);
-        } else if (plan.billingCycle === "yearly") {
-            endDate.setFullYear(endDate.getFullYear() + 1);
+        if (billingCycle) {
+            endDate.setMonth(endDate.getMonth() + billingCycle.durationInMonths);
         } else {
-            // lifetime
-            endDate.setFullYear(endDate.getFullYear() + 100);
+            // Fallback just in case
+            endDate.setMonth(endDate.getMonth() + 1);
         }
 
         // Expire any existing active subscription for this user
@@ -310,5 +317,27 @@ exports.subscriptionStats = catchAsyncError(async (req, res, next) => {
             active: activeCount,
             revenue: totalRevenue[0]?.total || 0,
         },
+    });
+});
+/* ═══════════════════════════════════════════════════════════════════════════ */
+/*  ADMIN — Toggle Plan Status                                               */
+/* ═══════════════════════════════════════════════════════════════════════════ */
+
+exports.activeInactivePlan = catchAsyncError(async (req, res, next) => {
+    const { id } = req.params;
+    const { isActive } = req.body;
+
+    const updateData = { isActive };
+    if (!isActive) {
+        updateData.deactivatedAt = new Date();
+    } else {
+        updateData.deactivatedAt = null;
+    }
+
+    await SubscriptionPlan.updateOne({ _id: id }, { $set: updateData });
+    
+    return res.status(200).json({
+        success: true,
+        message: `Subscription plan marked as ${isActive ? "Active" : "Inactive"}!`,
     });
 });
