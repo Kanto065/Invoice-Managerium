@@ -106,7 +106,38 @@ All UI uses `var(--ds-*)` CSS tokens from `theme.css`:
 
 ---
 
+## Phase 4 — Admin Subscription Dashboard (Mobile-First)
+
+### Changes
+- **`AdminDashboard.tsx`** _(new)_ — Full admin subscription management page using the **Deep Sea (`ds-*`) design system**
+- **`auth.utils.ts`** — Added `authedGet`, `authedPut`, `adminApi` object with `getStats`, `listSubscriptions`, `handleSubscription`
+- **`routes.tsx`** — Added `/admin/dashboard` route
+- **`app.js`** — Added `http://localhost:5173` to CORS origins
+
+### 4-Tab Bottom Navigation
+
+| Tab | Icon | Content |
+|-----|------|---------|
+| **Overview** | `dashboard` | Stats cards (pending, active, revenue); top-5 pending approvals |
+| **Pending** | `pending_actions` | Filtered list of pending subscription requests with approve/reject |
+| **All Subs** | `list_alt` | Full subscription list with status filter pills (all/pending/active/expired/cancelled) |
+| **Profile** | `admin_panel_settings` | Admin info, role badge, sign-out |
+
+### Admin API Endpoints Used
+- `GET /api/subscription/admin/stats` → stat cards
+- `GET /api/subscription/admin/subscriptions?status=` → subscription list
+- `PUT /api/subscription/admin/subscriptions/:id` → approve/reject actions
+
+### Features
+- Mobile-first layout (max-width 480px centered)
+- Approve/reject with toast feedback
+- Auth guard (redirects non-admin to `/login`)
+- Status-colored left borders + pill badges
+- Filter pills for quick status filtering
+- Material Symbols Outlined icons with `FILL` toggle for active nav state
+
+---
+
 ## Next Up
 - **Phase 2** — Invoice generation + real receipt printing
 - **Phase 3** — Products/categories scoped per shop (`shopId`)
-- **Phase 4** — Admin subscription dashboard (mobile-first)
