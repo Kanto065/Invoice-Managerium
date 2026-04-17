@@ -39,6 +39,8 @@ app.use((req, res, next) => {
     "http://localhost:3000",
     "http://localhost:3001",
     "http://localhost:4000",
+    "https://memobook.shop",
+    "https://www.memobook.shop",
   ];
   const origin = req.headers.origin;
 
@@ -75,10 +77,10 @@ app.use(express.static(path.join(__dirname, "uploads")));
 app.get("/api/hello", (req, res) => {
   return res.status(200).json({
     success: true,
-    message: "Hello from NanuBhai Backend!",
+    message: "Hello from Invoice Managerium Backend!",
     timestamp: new Date().toISOString(),
     data: {
-      server: "NanuBhai Backend",
+      server: "Invoice Managerium Backend",
       status: "running",
       port: process.env.PORT,
     },

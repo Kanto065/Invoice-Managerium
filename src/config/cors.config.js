@@ -4,6 +4,8 @@ const allowedOrigins = [
   "http://localhost:3001",
   "http://localhost:4000",
   "http://localhost:5173",
+  "https://memobook.shop",
+  "https://www.memobook.shop",
   // Add any other origins you need to allow
 ];
 
