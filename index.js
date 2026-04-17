@@ -9,6 +9,9 @@ const dbConnection = require("./src/config/database.config");
     console.log(`🚀 Server running on port ${PORT}`)
   );
 
+  const { initializeCronJobs } = require("./src/utils/cron");
+  initializeCronJobs();
+
   // Handle server errors
   server.on("error", (error) => {
     if (error.code === "EADDRINUSE") {

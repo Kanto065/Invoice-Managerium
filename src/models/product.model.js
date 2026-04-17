@@ -11,7 +11,7 @@ const productSchema = new mongoose.Schema(
       type: String,
       unique: true,
     },
-    categoryId: {
+    varientId: {
       required: true,
       type: mongoose.Types.ObjectId,
     },

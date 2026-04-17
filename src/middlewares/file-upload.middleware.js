@@ -52,7 +52,7 @@ const storage = multer.diskStorage({
 const avatarUpload = multer({
   storage: storage,
   limits: {
-    fileSize: 1000000, //Max 1MB
+    fileSize: 5000000, //Max 5MB
   },
   fileFilter(req, file, cb) {
     if (file.fieldname === "avatar") {
@@ -68,7 +68,7 @@ const avatarUpload = multer({
 const imageUpload = multer({
   storage: storage,
   limits: {
-    fileSize: 2000000, //Max 2MB
+    fileSize: 20000000, //Max 20MB
   },
   fileFilter(req, file, cb) {
     if (file.fieldname === "image") {
@@ -84,7 +84,7 @@ const imageUpload = multer({
 const imagesUpload = multer({
   storage: storage,
   limits: {
-    fileSize: 2000000, //Max 2MB
+    fileSize: 20000000, //Max 20MB
   },
   fileFilter(req, file, cb) {
     if (file.fieldname === "images") {

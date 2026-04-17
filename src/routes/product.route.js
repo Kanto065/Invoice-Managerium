@@ -4,6 +4,7 @@ const productRouter = express.Router();
 
 // ==>internal import<==
 const fileUploadMiddleware = require("../middlewares/file-upload.middleware");
+const { optimizeImages } = require("../middlewares/image-optimizer.middleware");
 const ProductController = require("../controllers/product.controller");
 const { authCheck, roleCheck } = require("../middlewares/auth.middleware");
 const dtoValidate = require("../middlewares/validate.middleware");
@@ -15,6 +16,7 @@ productRouter
     authCheck,
     roleCheck("admin"),
     fileUploadMiddleware.imagesUpload.array("images", 10),
+    optimizeImages,
     dtoValidate(ProductDTO.createProductSchema),
     ProductController.createProduct
   );
@@ -26,6 +28,7 @@ productRouter
     authCheck,
     roleCheck("admin"),
     fileUploadMiddleware.imagesUpload.array("images", 10),
+    optimizeImages,
     dtoValidate(ProductDTO.updateProductSchema),
     ProductController.updateProduct
   )

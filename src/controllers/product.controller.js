@@ -10,14 +10,14 @@ const Product = require("../models/product.model");
 const ProductImage = require("../models/product-image.model");
 const Varient = require("../models/varient.model");
 const ErrorHandler = require("../helper/error.helper");
-const Category = require("../models/category.model");
+const VarientAttribute = require("../models/varient-attribut.model");
 const ProductImages = require("../models/product-image.model");
 
 // ==> create a product <==
 exports.createProduct = catchAsyncError(async (req, res, next) => {
   const {
     name,
-    categoryId,
+    varientId,
     brandId,
     description,
     price,
@@ -28,9 +28,7 @@ exports.createProduct = catchAsyncError(async (req, res, next) => {
     stock,
     featured,
   } = req.body;
-  if (req?.files?.length < 1) {
-    return next(new ErrorHandler("Product image not found!", 404));
-  }
+  // Removed image validation length check to allow zero images
   // Check if product already exists
   const existProduct = await Product.findOne({ name });
   if (existProduct) {
@@ -46,7 +44,7 @@ exports.createProduct = catchAsyncError(async (req, res, next) => {
     let createData = {
       name,
       slug: slugify(name, { lower: true }),
-      categoryId,
+      varientId,
       description,
       price,
       previousPrice: previousPrice ? previousPrice : null,
@@ -59,12 +57,19 @@ exports.createProduct = catchAsyncError(async (req, res, next) => {
     if (brandId) createData.brandId = brandId;
     const newProduct = await Product.create(createData);
 
-    // Image upload
-    for (let file of req?.files) {
-      // adding new file
+    if (req?.files?.length > 0) {
+      for (let file of req?.files) {
+        // adding new file
+        await ProductImages.create({
+          productId: newProduct?._id,
+          image: file.filename,
+        });
+      }
+    } else {
+      // Put a default picture as placeholder
       await ProductImages.create({
         productId: newProduct?._id,
-        image: file.filename,
+        image: "product_placeholder.png",
       });
     }
 
@@ -79,7 +84,7 @@ exports.createProduct = catchAsyncError(async (req, res, next) => {
 exports.updateProduct = catchAsyncError(async (req, res, next) => {
   const {
     name,
-    categoryId,
+    varientId,
     brandId,
     description,
     price,
@@ -103,8 +108,8 @@ exports.updateProduct = catchAsyncError(async (req, res, next) => {
     updateData.name = name;
     updateData.slug = slugify(name, { lower: true });
   }
-  if (categoryId) {
-    updateData.categoryId = categoryId;
+  if (varientId) {
+    updateData.varientId = varientId;
   }
   if (brandId) {
     updateData.brandId = brandId;
@@ -168,7 +173,7 @@ exports.getAllProduct = catchAsyncError(async (req, res, next) => {
   const skip = (page - 1) * limit;
 
   // Query params
-  const { activeOnly, type, name, category, location } = req.query;
+  const { activeOnly, type, name, varient, location } = req.query;
 
   let match = {};
 
@@ -181,12 +186,9 @@ exports.getAllProduct = catchAsyncError(async (req, res, next) => {
     match.location = location;
   }
 
-  // 🔹 Filter by Category
-  if (category && mongoose.Types.ObjectId.isValid(category)) {
-    const child = await Category.findOne({ _id: category });
-    match.categoryId = {
-      $in: [new mongoose.Types.ObjectId(category), child?._id].filter(Boolean),
-    };
+  // 🔹 Filter by Varient
+  if (varient && mongoose.Types.ObjectId.isValid(varient)) {
+    match.varientId = new mongoose.Types.ObjectId(varient);
   }
 
   // 🔹 Search by Name
@@ -212,7 +214,7 @@ exports.getAllProduct = catchAsyncError(async (req, res, next) => {
       status: "active",
       $or: [
         { name: { $regex: name, $options: "i" } },
-        ...(match.categoryId ? [{ categoryId: match.categoryId }] : []),
+        ...(match.varientId ? [{ varientId: match.varientId }] : []),
         ...(match.brandId ? [{ brandId: match.brandId }] : []),
       ],
     };
@@ -222,10 +224,10 @@ exports.getAllProduct = catchAsyncError(async (req, res, next) => {
   const lookups = [
     {
       $lookup: {
-        from: "categories",
-        localField: "categoryId",
+        from: "varientattributes",
+        localField: "varientId",
         foreignField: "_id",
-        as: "category",
+        as: "varient",
       },
     },
     {
@@ -409,10 +411,10 @@ exports.getSingleProduct = catchAsyncError(async (req, res, next) => {
     },
     {
       $lookup: {
-        from: "categories",
-        localField: "categoryId",
+        from: "varientattributes",
+        localField: "varientId",
         foreignField: "_id",
-        as: "category",
+        as: "varient",
       },
     },
     {

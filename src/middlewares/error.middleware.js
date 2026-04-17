@@ -36,6 +36,15 @@ const errorMiddleware = (err, req, res, next) => {
     statusCode = 400;
   }
 
+  if (err.name === "MulterError") {
+    if (err.code === "LIMIT_FILE_SIZE") {
+      message = "File is too large. Maximum allowed size is 20MB per image.";
+    } else {
+      message = err.message;
+    }
+    statusCode = 400;
+  }
+
   return res.status(statusCode).json({
     success: false,
     message,

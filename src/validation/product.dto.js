@@ -6,17 +6,17 @@ const fileSchema = zod.object({
   mimetype: zod.enum(["image/jpeg", "image/png"]),
   size: zod
     .number()
-    .max(2 * 1024 * 1024, "Each image must not be greater than 2MB!"),
+    .max(20 * 1024 * 1024, "Each image must not be greater than 20MB!"),
 });
 const createProductSchema = zod.object({
   name: zod
     .string("Product name must be a string")
     .trim()
     .nonempty("Product name is required!"),
-  categoryId: zod
-    .string("Category id must be a string")
+  varientId: zod
+    .string("Varient id must be a string")
     .trim()
-    .nonempty("Category id is required!"),
+    .nonempty("Varient id is required!"),
   brandId: zod.string("Brand id must be a string").trim().optional(),
   description: zod
     .string("Product description must be a string")
@@ -60,7 +60,7 @@ const createProductSchema = zod.object({
   freeDelivery: zod
     .enum(["true", "false"], "Invalid free delivery status")
     .optional(),
-  images: zod.array(fileSchema).min(1, "At least 1 product image is required!"),
+  images: zod.array(fileSchema).optional(),
 });
 
 const updateProductSchema = zod.object({
@@ -68,10 +68,10 @@ const updateProductSchema = zod.object({
     .string("Product name must be a string")
     .trim()
     .nonempty("Product name is required!"),
-  categoryId: zod
-    .string("Category id must be a string")
+  varientId: zod
+    .string("Varient id must be a string")
     .trim()
-    .nonempty("Category id is required!"),
+    .nonempty("Varient id is required!"),
   brandId: zod.string("Brand id must be a string").trim().optional(),
   description: zod
     .string("Product description must be a string")
