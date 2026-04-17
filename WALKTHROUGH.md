@@ -138,18 +138,45 @@ All UI uses `var(--ds-*)` CSS tokens from `theme.css`:
 
 ---
 
-## Phase 3 — Product Management & CRUD
+## Phase 3 — Product Management & Multi-tenancy
 
 ### Changes
-- **`ProductManagement.tsx`** — Created a separate mobile-first UI for product CRUD operations, maintaining the DS design system. Replaced mock items with live data.
+- **`ProductManagement.tsx`** — Created a separate mobile-first UI for product CRUD operations, maintaining the DS design system.
+- **Shop Scoping (Multi-tenancy)** — Successfully implemented isolation for all products. Each product now requires a `shopId` and is private to the owner of that shop.
+- **Ownership Verification** — Replaced placeholder `customer` role with the proper `owner` role. Backend controllers now verify that the logged-in owner actually owns the shop associated with any product modification.
+- **Subscription Enforcement** — Product creation is now restricted by the owner's active plan limits (e.g., max 5 products for Free plan).
 - **Backend API Integration** — `authedFormDataPost` and `authedFormDataPut` helpers to handle `multipart/form-data` uploads securely.
-- **Image Optimization** — Real-time image compression using `sharp` within the `image-optimizer.middleware.js`, squashing uploaded image sizes (max 20MB allowed) to `1920x1920` WebP/JPEG/PNG format without visible quality loss.
-- **Variant Management** — Transitioned products to use a robust `Varient` structure (`varient-attribut.model.js` and `varient.model.js`) rather than just flat categories. Seeded base variant sizes (`S`, `M`, `L`, `XL`).
-- **Orphan Image Cleanup** — Scheduled a `node-cron` job (`cleanup_images.js`) to run every Sunday at midnight, actively flushing out deleted or unlinked images uploaded over time to prevent server bloat. Allows `product_placeholder.png` as fallback for empty uploads.
+- **Image Optimization** — Real-time image compression using `sharp` within the `image-optimizer.middleware.js`, squashing uploaded image sizes to `1920x1920` WebP/JPEG/PNG format.
+- **Variant Management** — Products use a robust `Varient` structure. Seeded base variant sizes (`S`, `M`, `L`, `XL`). Owners can view all variants.
+- **Orphan Image Cleanup** — Scheduled a `node-cron` job (`cleanup_images.js`) to run every Sunday at midnight, flushing out deleted or unlinked images.
+
+---
+
+## Phase 6 — Advanced Admin Subscription Controls
+
+### Changes
+- **Plan Lifecycle Management** — Admins can now **Activate/Deactivate** subscription plans and billing cycles in real-time.
+- **Audit Trails** — Added `deactivatedAt` timestamps to track deactivation history.
+- **UI Improvements**:
+    - Detailed status badges in the Admin Dashboard.
+    - Added `maxModeratorsPerShop` field to the "Create New Plan" form.
+    - Prevented browser auto-fill/autocomplete on administrative forms.
+    - Ensured numeric fields handle empty states correctly.
+
+---
+
+## Phase 7 — Intelligent Demo Product System
+
+### Changes
+- **Seeded Demo Products** — Created 10 professional demo items (Mechanical Keyboards, SSDs, Ergonomic Chairs, etc.) to give new users an immediate starting point.
+- **Logic** — If a user is on the **Free** plan, the dashboard automatically fetches and displays these 10 demo products alongside any they create themselves.
+- **Isolation** — Demo products are system-wide (`isDemo: true`) and use `product_placeholder.png` as fallback.
+- **Read-Only Demo** — Demo products are marked with a "DEMO" badge, and Edit/Delete actions are disabled for them.
 
 ---
 
 ## What Remains / Next Up
-- **Phase 3 Completion (Crucial)** — **Scoped Entities**: Products, Brands, Categories, and Variants are currently *global*. They need to be updated to include a `shopId` and the backend `product.controller.js` must filter CRUD operations so owners can only modify their own shop's inventory.
 - **Phase 2 (Invoice Generation)** — Real invoice and receipt generation, tied to physical shop branding (`receiptConfig`).
+- **Brand & Category Scoping** — While products are scoped, Brands and Categories are still global. They should ideally move to `shopId` scoping soon.
 - **Search & Filtering UI** — The dashboard could use pagination or filters for long lists of products.
+- **Moderator Assignment** — Implement the logic to invite and assign moderators to specific shops.
