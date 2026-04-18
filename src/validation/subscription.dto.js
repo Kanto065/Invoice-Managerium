@@ -25,9 +25,9 @@ const updatePlanSchema = createPlanSchema.partial();
 // ── User: purchase subscription ──
 const purchaseSubscriptionSchema = zod.object({
     planId: zod.string().nonempty("Plan ID is required!"),
+    billingCycleId: zod.string().nonempty("Billing Cycle ID is required!"),
     paymentMethod: zod.enum(["bkash", "nagad", "card", "bank"]),
     paymentReference: zod.string().trim().nonempty("Transaction ID is required!"),
-    paymentAmount: zod.number().min(0),
 });
 
 // ── Admin: approve/reject ──

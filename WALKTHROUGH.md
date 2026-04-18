@@ -177,6 +177,10 @@ All UI uses `var(--ds-*)` CSS tokens from `theme.css`:
 
 ## What Remains / Next Up
 - **Phase 2 (Invoice Generation)** — Real invoice and receipt generation, tied to physical shop branding (`receiptConfig`).
-- **Brand & Category Scoping** — While products are scoped, Brands and Categories are still global. They should ideally move to `shopId` scoping soon.
-- **Search & Filtering UI** — The dashboard could use pagination or filters for long lists of products.
+- **Subscription Upgrade Flow** — Purchase endpoint exists but no payment integration or upgrade UX.
+- **Subscription Renewal** — No renewal logic or UI for expired subscriptions.
+- **Brand & Category Scoping** — Brands and Categories are still global. They should ideally move to `shopId` scoping soon.
+- **Search & Filtering UI** — Dashboard needs pagination/filters for long product lists.
 - **Moderator Assignment** — Implement the logic to invite and assign moderators to specific shops.
+- **Recurring Customer Search** — Upcoming feature.
+- **Notification System** — Upcoming feature.

@@ -4,6 +4,7 @@ const Shop = require("../models/shop.model");
 const ShopMember = require("../models/shop-member.model");
 const UserSubscription = require("../models/user-subscription.model");
 const SubscriptionPlan = require("../models/subscription-plan.model");
+const Customer = require("../models/customer.model");
 const ErrorHandler = require("../helper/error.helper");
 
 /* ── Helpers ── */
@@ -31,7 +32,7 @@ async function getMonthlyInvoiceCount(shopId) {
   const start = new Date();
   start.setDate(1);
   start.setHours(0, 0, 0, 0);
-  return Invoice.countDocuments({ shopId, createdAt: { $gte: start } });
+  return Invoice.countDocuments({ shopId, createdAt: { $gte: start }, is_deleted: false });
 }
 
 // Get user's active subscription limits
@@ -53,7 +54,7 @@ async function generateInvoiceNumber(shopId) {
   const prefix = `INV-${year}-`;
 
   const last = await Invoice.findOne(
-    { shopId, invoiceNumber: { $regex: `^${prefix}` } },
+    { shopId, invoiceNumber: { $regex: `^${prefix}` }, is_deleted: false },
     { invoiceNumber: 1 },
     { sort: { createdAt: -1 } }
   );
@@ -99,7 +100,9 @@ exports.createInvoice = catchAsyncError(async (req, res, next) => {
     customerName,
     customerPhone,
     customerEmail,
+    customerAddress,
     items,
+    discountType = "flat",
     discount = 0,
     tax = 0,
     notes = "",
@@ -111,17 +114,53 @@ exports.createInvoice = catchAsyncError(async (req, res, next) => {
     (sum, item) => sum + item.unitPrice * item.quantity,
     0
   );
-  const grandTotal = subtotal - discount + tax;
+  
+  let discountAmount = 0;
+  if (discountType === "percentage") {
+    discountAmount = (subtotal * discount) / 100;
+  } else {
+    discountAmount = discount;
+  }
+
+  const grandTotal = subtotal - discountAmount + tax;
 
   const invoiceNumber = await generateInvoiceNumber(shopId);
 
+  let customerId = null;
+  if (customerPhone || customerName) {
+    // Upsert customer by phone (or name if no phone is provided for this shop)
+    const query = customerPhone ? { shopId, phone: customerPhone } : { shopId, name: customerName };
+    const customer = await Customer.findOneAndUpdate(
+      query,
+      {
+        $set: {
+          ownerId: shop.ownerId,
+          createdBy: userId,
+          name: customerName || "",
+          phone: customerPhone || "",
+          email: customerEmail || "",
+          address: customerAddress || "",
+        },
+        $inc: {
+          totalInvoices: 1,
+          totalSpent: grandTotal,
+        }
+      },
+      { new: true, upsert: true }
+    );
+    customerId = customer._id;
+  }
+
   const invoice = await Invoice.create({
     shopId,
+    ownerId: shop.ownerId,
     createdBy: userId,
     invoiceNumber,
+    customerId,
     customerName: customerName || "",
     customerPhone: customerPhone || "",
     customerEmail: customerEmail || "",
+    customerAddress: customerAddress || "",
     items: items.map((item) => ({
       name: item.name,
       quantity: item.quantity,
@@ -129,7 +168,9 @@ exports.createInvoice = catchAsyncError(async (req, res, next) => {
       total: item.unitPrice * item.quantity,
     })),
     subtotal,
+    discountType,
     discount,
+    discountAmount,
     tax,
     grandTotal,
     notes,
@@ -152,7 +193,7 @@ exports.listInvoices = catchAsyncError(async (req, res, next) => {
 
   const { page = 1, limit = 20, status } = req.query;
   const skip = (Number(page) - 1) * Number(limit);
-  const filter = { shopId };
+  const filter = { shopId, is_deleted: false };
   if (status) filter.status = status;
 
   const [invoices, total] = await Promise.all([
@@ -182,6 +223,7 @@ exports.getInvoice = catchAsyncError(async (req, res, next) => {
   const invoice = await Invoice.findOne({
     _id: invoiceId,
     shopId,
+    is_deleted: false,
   }).populate("createdBy", "name email");
 
   if (!invoice) {
@@ -202,13 +244,13 @@ exports.updateInvoiceStatus = catchAsyncError(async (req, res, next) => {
   const shop = await assertShopAccess(shopId, userId).catch((e) => next(e));
   if (!shop) return;
 
-  const invoice = await Invoice.findOne({ _id: invoiceId, shopId });
+  const invoice = await Invoice.findOne({ _id: invoiceId, shopId, is_deleted: false });
   if (!invoice) {
     return next(new ErrorHandler("Invoice not found!", 404));
   }
 
   const { status } = req.body;
-  const allowed = ["draft", "issued", "paid", "void"];
+  const allowed = ["draft", "issued", "paid", "void", "printed"];
   if (!allowed.includes(status)) {
     return next(new ErrorHandler("Invalid status!", 400));
   }
@@ -236,7 +278,11 @@ exports.deleteInvoice = catchAsyncError(async (req, res, next) => {
     return next(new ErrorHandler("Only the shop owner can delete invoices!", 403));
   }
 
-  const invoice = await Invoice.findOneAndDelete({ _id: invoiceId, shopId });
+  const invoice = await Invoice.findOneAndUpdate(
+    { _id: invoiceId, shopId },
+    { is_deleted: true },
+    { new: true }
+  );
   if (!invoice) {
     return next(new ErrorHandler("Invoice not found!", 404));
   }
@@ -255,12 +301,18 @@ exports.invoiceStats = catchAsyncError(async (req, res, next) => {
   await assertShopAccess(shopId, userId).catch((e) => next(e));
 
   const [total, paid, issued, draft, revenue] = await Promise.all([
-    Invoice.countDocuments({ shopId }),
-    Invoice.countDocuments({ shopId, status: "paid" }),
-    Invoice.countDocuments({ shopId, status: "issued" }),
-    Invoice.countDocuments({ shopId, status: "draft" }),
+    Invoice.countDocuments({ shopId, is_deleted: false }),
+    Invoice.countDocuments({ shopId, status: "paid", is_deleted: false }),
+    Invoice.countDocuments({ shopId, status: "issued", is_deleted: false }),
+    Invoice.countDocuments({ shopId, status: "draft", is_deleted: false }),
     Invoice.aggregate([
-      { $match: { shopId: require("mongoose").Types.ObjectId.createFromHexString(shopId), status: "paid" } },
+      { 
+        $match: { 
+          shopId: require("mongoose").Types.ObjectId.createFromHexString(shopId), 
+          status: "paid",
+          is_deleted: false 
+        } 
+      },
       { $group: { _id: null, total: { $sum: "$grandTotal" } } },
     ]),
   ]);

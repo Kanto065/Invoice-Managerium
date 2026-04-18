@@ -7,6 +7,11 @@ const invoiceSchema = new mongoose.Schema(
             type: mongoose.Types.ObjectId,
             ref: "shops",
         },
+        ownerId: {
+            required: true,
+            type: mongoose.Types.ObjectId,
+            ref: "users",
+        },
         orderId: {
             type: mongoose.Types.ObjectId,
             ref: "orders",
@@ -24,6 +29,12 @@ const invoiceSchema = new mongoose.Schema(
             unique: true,
         },
 
+        customerId: {
+            type: mongoose.Types.ObjectId,
+            ref: "customers",
+            default: null,
+        },
+
         // ── Customer info snapshot ──
         customerName: {
             type: String,
@@ -34,6 +45,10 @@ const invoiceSchema = new mongoose.Schema(
             default: "",
         },
         customerEmail: {
+            type: String,
+            default: "",
+        },
+        customerAddress: {
             type: String,
             default: "",
         },
@@ -57,7 +72,16 @@ const invoiceSchema = new mongoose.Schema(
             type: Number,
             default: 0,
         },
+        discountType: {
+            type: String,
+            enum: ["flat", "percentage"],
+            default: "flat",
+        },
         discount: {
+            type: Number,
+            default: 0,
+        },
+        discountAmount: {
             type: Number,
             default: 0,
         },
@@ -73,8 +97,12 @@ const invoiceSchema = new mongoose.Schema(
         status: {
             required: true,
             type: String,
-            enum: ["draft", "issued", "paid", "void"],
+            enum: ["draft", "issued", "paid", "void", "printed"],
             default: "draft",
+        },
+        is_deleted: {
+            type: Boolean,
+            default: false,
         },
     },
     { timestamps: true }

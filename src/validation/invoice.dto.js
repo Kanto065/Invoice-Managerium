@@ -10,17 +10,19 @@ const createInvoiceSchema = zod.object({
   customerName: zod.string().trim().optional(),
   customerPhone: zod.string().trim().optional(),
   customerEmail: zod.string().trim().email().optional().or(zod.literal("")),
+  customerAddress: zod.string().trim().optional(),
   items: zod
     .array(itemSchema)
     .min(1, "At least one item is required!"),
+  discountType: zod.enum(["flat", "percentage"]).optional(),
   discount: zod.number().min(0).optional(),
   tax: zod.number().min(0).optional(),
   notes: zod.string().trim().optional(),
-  status: zod.enum(["draft", "issued"]).optional(),
+  status: zod.enum(["draft", "issued", "paid", "void", "printed"]).optional(),
 });
 
 const updateInvoiceStatusSchema = zod.object({
-  status: zod.enum(["draft", "issued", "paid", "void"]),
+  status: zod.enum(["draft", "issued", "paid", "void", "printed"]),
 });
 
 module.exports = {

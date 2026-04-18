@@ -2,6 +2,9 @@ const { catchAsyncError } = require("../middlewares/catchAsync.middleware");
 const SubscriptionPlan = require("../models/subscription-plan.model");
 const UserSubscription = require("../models/user-subscription.model");
 const BillingCycle = require("../models/billing-cycle.model");
+const Shop = require("../models/shop.model");
+const mail = require("../helper/mail.helper");
+const upgradeSubMailTemplate = require("../views/upgradeSubMailTemplate");
 const ErrorHandler = require("../helper/error.helper");
 
 // Helper: slugify plan name
@@ -229,16 +232,29 @@ exports.listSubscriptions = catchAsyncError(async (req, res, next) => {
         UserSubscription.countDocuments(filter),
     ]);
 
+    const subscriptionsWithShop = await Promise.all(
+        subscriptions.map(async (sub) => {
+            const subObj = sub.toObject();
+            if (subObj.userId && subObj.userId._id) {
+                const shop = await Shop.findOne({ ownerId: subObj.userId._id });
+                subObj.shopName = shop ? shop.name : null;
+            } else {
+                subObj.shopName = null;
+            }
+            return subObj;
+        })
+    );
+
     return res.status(200).json({
         success: true,
-        subscriptions,
+        subscriptions: subscriptionsWithShop,
         total,
     });
 });
 
 // ===> Approve or reject <===
 exports.handleSubscription = catchAsyncError(async (req, res, next) => {
-    const sub = await UserSubscription.findById(req.params.id);
+    const sub = await UserSubscription.findById(req.params.id).populate("userId", "name email");
     if (!sub) {
         return next(new ErrorHandler("Subscription not found!", 404));
     }
@@ -275,6 +291,19 @@ exports.handleSubscription = catchAsyncError(async (req, res, next) => {
         sub.approvedBy = req.user._id;
         sub.approvedAt = now;
         await sub.save();
+
+        // Send approval email
+        if (sub.userId && sub.userId.email) {
+            try {
+                await mail({
+                    email: sub.userId.email,
+                    subject: "Subscription Approved / Upgraded!",
+                    body: upgradeSubMailTemplate(sub.userId.name, plan.name),
+                });
+            } catch (err) {
+                console.error("Failed to send subscription upgrade email:", err);
+            }
+        }
 
         return res.status(200).json({
             success: true,
