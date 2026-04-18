@@ -91,7 +91,7 @@ exports.createProduct = catchAsyncError(async (req, res, next) => {
       // Put a default picture as placeholder
       await ProductImages.create({
         productId: newProduct?._id,
-        image: "product_placeholder.png",
+        image: "27696f38-c9c2-4184-8fec-9ca0a227e8c9.png",
       });
     }
 
