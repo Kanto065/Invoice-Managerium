@@ -48,24 +48,28 @@ async function getUserLimits(ownerId) {
   return { maxInvoicesPerMonth: sub.planId.maxInvoicesPerMonth };
 }
 
-// Generate next invoice number for a shop: INV-YYYY-XXXX
-async function generateInvoiceNumber(shopId) {
-  const year = new Date().getFullYear();
-  const prefix = `INV-${year}-`;
+// Generate next invoice number: IN-MMYY-XXXX where XXXX is random alphanumeric
+async function generateInvoiceNumber() {
+  const now = new Date();
+  const mm = String(now.getMonth() + 1).padStart(2, "0");
+  const yy = String(now.getFullYear()).slice(-2);
+  const prefix = `IN-${mm}${yy}-`;
 
-  const last = await Invoice.findOne(
-    { shopId, invoiceNumber: { $regex: `^${prefix}` }, is_deleted: false },
-    { invoiceNumber: 1 },
-    { sort: { createdAt: -1 } }
-  );
-
-  let seq = 1;
-  if (last) {
-    const parts = last.invoiceNumber.split("-");
-    seq = (parseInt(parts[parts.length - 1], 10) || 0) + 1;
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+  let suffix = "";
+  for (let i = 0; i < 4; i++) {
+    suffix += chars.charAt(Math.floor(Math.random() * chars.length));
   }
 
-  return `${prefix}${String(seq).padStart(4, "0")}`;
+  const fullId = `${prefix}${suffix}`;
+
+  // Safety check: ensure global uniqueness across the entire database
+  const exists = await Invoice.findOne({ invoiceNumber: fullId });
+  if (exists) {
+    return generateInvoiceNumber(); // Collision occurred, retry recursively
+  }
+
+  return fullId;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════ */
@@ -105,6 +109,7 @@ exports.createInvoice = catchAsyncError(async (req, res, next) => {
     discountType = "flat",
     discount = 0,
     tax = 0,
+    advanceAmount = 0,
     notes = "",
     status = "issued",
   } = req.body;
@@ -122,9 +127,9 @@ exports.createInvoice = catchAsyncError(async (req, res, next) => {
     discountAmount = discount;
   }
 
-  const grandTotal = subtotal - discountAmount + tax;
+  const grandTotal = subtotal - discountAmount + tax - advanceAmount;
 
-  const invoiceNumber = await generateInvoiceNumber(shopId);
+  const invoiceNumber = await generateInvoiceNumber();
 
   let customerId = null;
   if (customerPhone || customerName) {
@@ -172,6 +177,7 @@ exports.createInvoice = catchAsyncError(async (req, res, next) => {
     discount,
     discountAmount,
     tax,
+    advanceAmount,
     grandTotal,
     notes,
     status,
