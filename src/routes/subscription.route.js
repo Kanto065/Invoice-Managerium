@@ -59,6 +59,10 @@ subscriptionRouter
         SubController.handleSubscription
     );
 
+subscriptionRouter
+    .route("/admin/subscriptions/revoke/:id")
+    .put(authCheck, roleCheck("admin"), SubController.revokeSubscription);
+
 // ── Admin: stats ──
 subscriptionRouter
     .route("/admin/stats")

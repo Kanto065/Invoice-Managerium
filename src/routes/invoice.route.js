@@ -5,6 +5,7 @@ const { authCheck } = require("../middlewares/auth.middleware");
 const InvoiceController = require("../controllers/invoice.controller");
 const dtoValidate = require("../middlewares/validate.middleware");
 const InvoiceDTO = require("../validation/invoice.dto");
+const { checkSubscription } = require("../middlewares/subscription.middleware");
 
 // All invoice routes are scoped under a shop
 // Base: /api/invoice/shop/:shopId
@@ -14,6 +15,7 @@ invoiceRouter
   .get(authCheck, InvoiceController.listInvoices)
   .post(
     authCheck,
+    checkSubscription,
     dtoValidate(InvoiceDTO.createInvoiceSchema),
     InvoiceController.createInvoice
   );

@@ -9,12 +9,14 @@ const ProductController = require("../controllers/product.controller");
 const { authCheck, roleCheck } = require("../middlewares/auth.middleware");
 const dtoValidate = require("../middlewares/validate.middleware");
 const ProductDTO = require("../validation/product.dto");
+const { checkSubscription } = require("../middlewares/subscription.middleware");
 
 productRouter
   .route("/create")
   .post(
     authCheck,
     roleCheck("admin", "owner"),
+    checkSubscription,
     fileUploadMiddleware.imagesUpload.array("images", 10),
     optimizeImages,
     dtoValidate(ProductDTO.createProductSchema),
@@ -27,6 +29,7 @@ productRouter
   .put(
     authCheck,
     roleCheck("admin", "owner"),
+    checkSubscription,
     fileUploadMiddleware.imagesUpload.array("images", 10),
     optimizeImages,
     dtoValidate(ProductDTO.updateProductSchema),
