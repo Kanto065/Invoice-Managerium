@@ -370,3 +370,28 @@ exports.activeInactivePlan = catchAsyncError(async (req, res, next) => {
         message: `Subscription plan marked as ${isActive ? "Active" : "Inactive"}!`,
     });
 });
+
+// ===> Revoke an active subscription <===
+exports.revokeSubscription = catchAsyncError(async (req, res, next) => {
+    const { id } = req.params;
+    const { reason } = req.body;
+
+    const sub = await UserSubscription.findById(id);
+    if (!sub) {
+        return next(new ErrorHandler("Subscription not found!", 404));
+    }
+
+    if (sub.status !== "active") {
+        return next(new ErrorHandler("Can only revoke active subscriptions.", 400));
+    }
+
+    sub.status = "cancelled";
+    sub.rejectionReason = reason || "Revoked by administrator";
+    await sub.save();
+
+    return res.status(200).json({
+        success: true,
+        message: "Subscription has been revoked successfully.",
+        subscription: sub,
+    });
+});
