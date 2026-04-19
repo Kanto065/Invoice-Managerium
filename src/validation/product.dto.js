@@ -13,10 +13,7 @@ const createProductSchema = zod.object({
     .string("Product name must be a string")
     .trim()
     .nonempty("Product name is required!"),
-  varientId: zod
-    .string("Varient id must be a string")
-    .trim()
-    .nonempty("Varient id is required!"),
+  varientId: zod.string("Varient id must be a string").trim().optional(),
   brandId: zod.string("Brand id must be a string").trim().optional(),
   description: zod
     .string("Product description must be a string")
@@ -68,10 +65,7 @@ const updateProductSchema = zod.object({
     .string("Product name must be a string")
     .trim()
     .nonempty("Product name is required!"),
-  varientId: zod
-    .string("Varient id must be a string")
-    .trim()
-    .nonempty("Varient id is required!"),
+  varientId: zod.string("Varient id must be a string").trim().optional(),
   brandId: zod.string("Brand id must be a string").trim().optional(),
   description: zod
     .string("Product description must be a string")

@@ -29,6 +29,10 @@ invoiceRouter
   .get(authCheck, InvoiceController.getInvoice)
   .put(
     authCheck,
+    InvoiceController.updateInvoice
+  )
+  .patch(
+    authCheck,
     dtoValidate(InvoiceDTO.updateInvoiceStatusSchema),
     InvoiceController.updateInvoiceStatus
   )

@@ -17,8 +17,8 @@ const productSchema = new mongoose.Schema(
       unique: true,
     },
     varientId: {
-      required: true,
       type: mongoose.Types.ObjectId,
+      default: null,
     },
     brandId: {
       type: mongoose.Types.ObjectId,

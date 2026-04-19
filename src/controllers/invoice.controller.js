@@ -110,8 +110,11 @@ exports.createInvoice = catchAsyncError(async (req, res, next) => {
     discount = 0,
     tax = 0,
     advanceAmount = 0,
+    deliveryCharge = 0,
+    isDeliveryPaid = false,
     notes = "",
     status = "issued",
+    date,
   } = req.body;
 
   // Compute totals server-side to avoid tampering
@@ -127,7 +130,7 @@ exports.createInvoice = catchAsyncError(async (req, res, next) => {
     discountAmount = discount;
   }
 
-  const grandTotal = subtotal - discountAmount + tax - advanceAmount;
+  const grandTotal = subtotal - discountAmount + tax + Number(deliveryCharge) - Number(advanceAmount);
 
   const invoiceNumber = await generateInvoiceNumber();
 
@@ -178,9 +181,12 @@ exports.createInvoice = catchAsyncError(async (req, res, next) => {
     discountAmount,
     tax,
     advanceAmount,
+    deliveryCharge,
+    isDeliveryPaid,
     grandTotal,
     notes,
     status,
+    ...(date && { createdAt: new Date(date) }),
   });
 
   return res.status(201).json({
@@ -239,6 +245,83 @@ exports.getInvoice = catchAsyncError(async (req, res, next) => {
   return res.status(200).json({
     success: true,
     invoice,
+  });
+});
+
+// ===> Update invoice <===
+exports.updateInvoice = catchAsyncError(async (req, res, next) => {
+  const { shopId, invoiceId } = req.params;
+  const userId = req.user._id;
+
+  const shop = await assertShopAccess(shopId, userId).catch((e) => next(e));
+  if (!shop) return;
+
+  const invoice = await Invoice.findOne({ _id: invoiceId, shopId, is_deleted: false });
+  if (!invoice) {
+    return next(new ErrorHandler("Invoice not found!", 404));
+  }
+
+  const {
+    customerName,
+    customerPhone,
+    customerEmail,
+    customerAddress,
+    items,
+    discountType,
+    discount,
+    tax,
+    advanceAmount,
+    deliveryCharge,
+    isDeliveryPaid,
+    notes,
+    status,
+    date,
+  } = req.body;
+
+  if (customerName !== undefined) invoice.customerName = customerName;
+  if (customerPhone !== undefined) invoice.customerPhone = customerPhone;
+  if (customerEmail !== undefined) invoice.customerEmail = customerEmail;
+  if (customerAddress !== undefined) invoice.customerAddress = customerAddress;
+  if (notes !== undefined) invoice.notes = notes;
+  if (status !== undefined) invoice.status = status;
+  if (date !== undefined) invoice.createdAt = new Date(date);
+
+  if (items) {
+    invoice.items = items.map((item) => ({
+      name: item.name,
+      quantity: item.quantity,
+      unitPrice: item.unitPrice,
+      total: item.unitPrice * item.quantity,
+    }));
+  }
+
+  if (discountType !== undefined) invoice.discountType = discountType;
+  if (discount !== undefined) invoice.discount = discount;
+  if (tax !== undefined) invoice.tax = tax;
+  if (advanceAmount !== undefined) invoice.advanceAmount = advanceAmount;
+  if (deliveryCharge !== undefined) invoice.deliveryCharge = deliveryCharge;
+  if (isDeliveryPaid !== undefined) invoice.isDeliveryPaid = isDeliveryPaid;
+
+  // Recompute totals
+  const subtotal = invoice.items.reduce((sum, item) => sum + item.total, 0);
+  invoice.subtotal = subtotal;
+
+  let discountAmount = 0;
+  if (invoice.discountType === "percentage") {
+    discountAmount = (subtotal * invoice.discount) / 100;
+  } else {
+    discountAmount = invoice.discount;
+  }
+  invoice.discountAmount = discountAmount;
+
+  invoice.grandTotal = subtotal - discountAmount + (invoice.tax || 0) + (Number(invoice.deliveryCharge) || 0) - (Number(invoice.advanceAmount) || 0);
+
+  await invoice.save();
+
+  return res.status(200).json({
+    success: true,
+    invoice,
+    message: "Invoice updated successfully!",
   });
 });
 

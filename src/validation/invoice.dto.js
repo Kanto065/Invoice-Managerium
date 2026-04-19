@@ -19,6 +19,7 @@ const createInvoiceSchema = zod.object({
   tax: zod.number().min(0).optional(),
   notes: zod.string().trim().optional(),
   status: zod.enum(["draft", "issued", "paid", "void", "printed"]).optional(),
+  date: zod.string().optional(),
 });
 
 const updateInvoiceStatusSchema = zod.object({

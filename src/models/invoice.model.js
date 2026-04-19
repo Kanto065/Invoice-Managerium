@@ -89,6 +89,14 @@ const invoiceSchema = new mongoose.Schema(
             type: Number,
             default: 0,
         },
+        deliveryCharge: {
+            type: Number,
+            default: 0,
+        },
+        isDeliveryPaid: {
+            type: Boolean,
+            default: false,
+        },
         grandTotal: {
             type: Number,
             default: 0,
