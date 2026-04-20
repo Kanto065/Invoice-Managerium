@@ -7,7 +7,7 @@ async function fix() {
   
   const result = await ProductImages.updateMany(
     { image: "default-product.png" },
-    { $set: { image: "product_placeholder.png" } }
+    { $set: { image: "27696f38-c9c2-4184-8fec-9ca0a227e8c9.png" } }
   );
   
   console.log(`Updated ${result.modifiedCount} images.`);
