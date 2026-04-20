@@ -186,7 +186,7 @@ exports.createInvoice = catchAsyncError(async (req, res, next) => {
     grandTotal,
     notes,
     status,
-    ...(date && { createdAt: new Date(date) }),
+    invoiceDate: date ? new Date(date) : undefined,
   });
 
   return res.status(201).json({
@@ -284,8 +284,7 @@ exports.updateInvoice = catchAsyncError(async (req, res, next) => {
   if (customerAddress !== undefined) invoice.customerAddress = customerAddress;
   if (notes !== undefined) invoice.notes = notes;
   if (status !== undefined) invoice.status = status;
-  if (date !== undefined) invoice.createdAt = new Date(date);
-
+  if (date !== undefined) invoice.invoiceDate = new Date(date);
   if (items) {
     invoice.items = items.map((item) => ({
       name: item.name,
