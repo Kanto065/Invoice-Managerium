@@ -6,6 +6,8 @@ const UserSubscription = require("../models/user-subscription.model");
 const SubscriptionPlan = require("../models/subscription-plan.model");
 const Customer = require("../models/customer.model");
 const ErrorHandler = require("../helper/error.helper");
+const mail = require("../helper/mail.helper");
+const invoiceMailTemplate = require("../views/invoiceMailTemplate");
 
 /* ── Helpers ── */
 
@@ -122,7 +124,7 @@ exports.createInvoice = catchAsyncError(async (req, res, next) => {
     (sum, item) => sum + item.unitPrice * item.quantity,
     0
   );
-  
+
   let discountAmount = 0;
   if (discountType === "percentage") {
     discountAmount = (subtotal * discount) / 100;
@@ -130,7 +132,8 @@ exports.createInvoice = catchAsyncError(async (req, res, next) => {
     discountAmount = discount;
   }
 
-  const grandTotal = subtotal - discountAmount + tax + Number(deliveryCharge) - Number(advanceAmount);
+  const effectiveDeliveryCharge = isDeliveryPaid ? 0 : Number(deliveryCharge);
+  const grandTotal = subtotal - discountAmount + tax + effectiveDeliveryCharge - Number(advanceAmount);
 
   const invoiceNumber = await generateInvoiceNumber();
 
@@ -189,6 +192,15 @@ exports.createInvoice = catchAsyncError(async (req, res, next) => {
     invoiceDate: date ? new Date(date) : undefined,
   });
 
+  // Background send email if customer email exists
+  if (invoice.customerEmail) {
+    mail({
+      email: invoice.customerEmail,
+      subject: `Purchase Receipt from ${shop.name} - #${invoice.invoiceNumber}`,
+      body: invoiceMailTemplate({ shop, invoice }),
+    }).catch((err) => console.log("Email sending failed:", err));
+  }
+
   return res.status(201).json({
     success: true,
     invoice,
@@ -203,10 +215,18 @@ exports.listInvoices = catchAsyncError(async (req, res, next) => {
 
   await assertShopAccess(shopId, userId).catch((e) => next(e));
 
-  const { page = 1, limit = 20, status } = req.query;
+  const { page = 1, limit = 20, status, date } = req.query;
   const skip = (Number(page) - 1) * Number(limit);
   const filter = { shopId, is_deleted: false };
   if (status) filter.status = status;
+
+  if (date) {
+    const start = new Date(date);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(date);
+    end.setHours(23, 59, 59, 999);
+    filter.invoiceDate = { $gte: start, $lte: end };
+  }
 
   const [invoices, total] = await Promise.all([
     Invoice.find(filter)
@@ -313,9 +333,19 @@ exports.updateInvoice = catchAsyncError(async (req, res, next) => {
   }
   invoice.discountAmount = discountAmount;
 
-  invoice.grandTotal = subtotal - discountAmount + (invoice.tax || 0) + (Number(invoice.deliveryCharge) || 0) - (Number(invoice.advanceAmount) || 0);
+  const effectiveDeliveryCharge = invoice.isDeliveryPaid ? 0 : (Number(invoice.deliveryCharge) || 0);
+  invoice.grandTotal = subtotal - discountAmount + (invoice.tax || 0) + effectiveDeliveryCharge - (Number(invoice.advanceAmount) || 0);
 
   await invoice.save();
+
+  // Background send email if customer email exists
+  if (invoice.customerEmail) {
+    mail({
+      email: invoice.customerEmail,
+      subject: `Purchase Receipt from ${shop.name} - #${invoice.invoiceNumber}`,
+      body: invoiceMailTemplate({ shop, invoice }),
+    }).catch((err) => console.log("Email sending failed:", err));
+  }
 
   return res.status(200).json({
     success: true,
@@ -394,12 +424,12 @@ exports.invoiceStats = catchAsyncError(async (req, res, next) => {
     Invoice.countDocuments({ shopId, status: "issued", is_deleted: false }),
     Invoice.countDocuments({ shopId, status: "draft", is_deleted: false }),
     Invoice.aggregate([
-      { 
-        $match: { 
-          shopId: require("mongoose").Types.ObjectId.createFromHexString(shopId), 
+      {
+        $match: {
+          shopId: require("mongoose").Types.ObjectId.createFromHexString(shopId),
           status: "paid",
-          is_deleted: false 
-        } 
+          is_deleted: false
+        }
       },
       { $group: { _id: null, total: { $sum: "$grandTotal" } } },
     ]),
