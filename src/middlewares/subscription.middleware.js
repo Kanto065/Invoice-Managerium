@@ -22,12 +22,9 @@ exports.checkSubscription = catchAsyncError(async (req, res, next) => {
     }).sort({ createdAt: -1 });
 
     if (!subscription) {
-        return next(
-            new ErrorHandler(
-                "You do not have an active subscription. Please purchase a plan to continue.",
-                403
-            )
-        );
+        // If no active subscription is found, we allow the request to continue.
+        // Downstream controllers should treat this as a default "Free" tier.
+        return next();
     }
 
     // Check expiration date

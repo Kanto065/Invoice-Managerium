@@ -32,8 +32,11 @@ exports.createProduct = catchAsyncError(async (req, res, next) => {
     shopId,
   } = req.body;
   // Removed image validation length check to allow zero images
-  // Check if product already exists
-  const existProduct = await Product.findOne({ name });
+  // Check if product already exists in this shop
+  const existProduct = await Product.findOne({
+    name: { $regex: new RegExp(`^${name.trim()}$`, "i") },
+    shopId,
+  });
   if (existProduct) {
     await Product.updateOne(
       { _id: existProduct._id },
@@ -55,16 +58,34 @@ exports.createProduct = catchAsyncError(async (req, res, next) => {
 
     // 2️⃣ Check Subscription Limits
     const userSub = await UserSubscription.findOne({ userId: shop.ownerId, status: "active" }).populate("planId");
-    const maxProducts = userSub?.planId?.maxProductsPerShop ?? 5; // Default to free limit if no sub
-    const currentCount = await Product.countDocuments({ shopId, isDemo: false });
-    
-    if (currentCount >= maxProducts) {
-      return next(new ErrorHandler(`Product limit reached for this shop (${maxProducts} products max). Please upgrade your plan.`, 403));
+    const isFreePlan = !userSub || userSub?.planId?.price === 0;
+
+    if (!isFreePlan) {
+      // Paid Plan: Enforce total product limit
+      const maxProducts = userSub?.planId?.maxProductsPerShop ?? 5;
+      const currentCount = await Product.countDocuments({ shopId, isDemo: false });
+      
+      if (maxProducts !== -1 && currentCount >= maxProducts) {
+        return next(new ErrorHandler(`Product limit reached for this shop (${maxProducts} products max). Please upgrade your plan.`, 403));
+      }
+    } else {
+      // Free Plan: Enforce 24-hour limit (10 products max per 24 hours)
+      const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+      
+      const recentProductCount = await Product.countDocuments({
+        shopId,
+        isDemo: false,
+        createdAt: { $gte: twentyFourHoursAgo }
+      });
+
+      if (recentProductCount >= 10) {
+        return next(new ErrorHandler("Daily limit reached (10 products max per 24 hours for free plan). Please upgrade your plan.", 403));
+      }
     }
 
     let createData = {
-      name,
-      slug: slugify(name, { lower: true }),
+      name: name.trim(),
+      slug: slugify(name.trim(), { lower: true }),
       shopId,
       varientId,
       description,
@@ -104,6 +125,7 @@ exports.createProduct = catchAsyncError(async (req, res, next) => {
 
 // ==> update a product <==
 exports.updateProduct = catchAsyncError(async (req, res, next) => {
+  const id = req?.params?.id;
   const {
     name,
     varientId,
@@ -134,8 +156,8 @@ exports.updateProduct = catchAsyncError(async (req, res, next) => {
 
   let updateData = {};
   if (name) {
-    updateData.name = name;
-    updateData.slug = slugify(name, { lower: true });
+    updateData.name = name.trim();
+    updateData.slug = slugify(name.trim(), { lower: true });
   }
   if (varientId) {
     updateData.varientId = varientId;
@@ -584,7 +606,7 @@ exports.activeInactiveProduct = catchAsyncError(async (req, res, next) => {
   const { status } = req.body;
   const id = req?.params?.id;
   if (!id) {
-    return new ErrorHandler("Product id is requried!");
+    return next(new ErrorHandler("Product id is requried!", 400));
   }
   const existProduct = await Product.findById(id);
   if (!existProduct) {

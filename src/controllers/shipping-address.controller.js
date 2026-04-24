@@ -93,7 +93,7 @@ exports.getAllShippingAddress = catchAsyncError(async (req, res, next) => {
 exports.getSingleShippingAddress = catchAsyncError(async (req, res, next) => {
   const id = req.params.id;
   if (!id) {
-    return new ErrorHandler("Shipping address id is requried");
+    return next(new ErrorHandler("Shipping address id is required", 400));
   }
   const existShipping = await ShippingAddress.findById(id);
   if (!existShipping) {

@@ -138,7 +138,7 @@ exports.getAllProductImages = catchAsyncError(async (req, res, next) => {
 exports.getSingleProductImage = catchAsyncError(async (req, res, next) => {
   const id = req?.params?.id;
   if (!id) {
-    return new ErrorHandler("Product image id is requried");
+    return next(new ErrorHandler("Product image id is required", 400));
   }
   const existProductImage = await ProductImage.findById(id);
   if (!existProductImage) {
@@ -154,7 +154,7 @@ exports.getSingleProductImage = catchAsyncError(async (req, res, next) => {
 exports.deleteProductImage = catchAsyncError(async (req, res, next) => {
   const id = req.params.id;
   if (!id) {
-    return new ErrorHandler("Product image id is requried");
+    return next(new ErrorHandler("Product image id is required", 400));
   }
   const existProductImage = await ProductImage.findById(id);
   const totalProductImages = await ProductImage.find({

@@ -39,7 +39,7 @@ exports.getAllVarientAttributes = catchAsyncError(async (req, res, next) => {
 exports.deleteVarientAttributes = catchAsyncError(async (req, res, next) => {
   const id = req?.params?.id;
   if (!id) {
-    return new ErrorHandler("Varient attribute id is requried!");
+    return next(new ErrorHandler("Varient attribute id is required!", 400));
   }
   const existVarientAttribute = await VarientAttribute.findById(id);
   if (!existVarientAttribute) {

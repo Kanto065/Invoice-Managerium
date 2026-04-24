@@ -37,6 +37,29 @@ async function getMonthlyInvoiceCount(shopId) {
   return Invoice.countDocuments({ shopId, createdAt: { $gte: start }, is_deleted: false });
 }
 
+// Get current 24-hour invoice count for a shop
+async function getDailyInvoiceCount(shopId) {
+  const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  return Invoice.countDocuments({ shopId, createdAt: { $gte: twentyFourHoursAgo }, is_deleted: false });
+}
+
+// Check if user reached the print limit (20 prints per 24 hours for free plan)
+async function isPrintLimitReached(shopId, ownerId) {
+  const userSub = await UserSubscription.findOne({ userId: ownerId, status: "active" }).populate("planId");
+  const isFreePlan = !userSub || userSub?.planId?.price === 0;
+
+  if (isFreePlan) {
+    const dailyPrintedCount = await Invoice.countDocuments({
+      shopId,
+      status: "printed",
+      updatedAt: { $gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
+      is_deleted: false
+    });
+    return dailyPrintedCount >= 20;
+  }
+  return false;
+}
+
 // Get user's active subscription limits
 async function getUserLimits(ownerId) {
   const sub = await UserSubscription.findOne({
@@ -88,17 +111,34 @@ exports.createInvoice = catchAsyncError(async (req, res, next) => {
   );
   if (!shop) return;
 
-  // Monthly invoice limit check
-  const limits = await getUserLimits(shop.ownerId);
-  if (limits.maxInvoicesPerMonth !== -1) {
-    const monthCount = await getMonthlyInvoiceCount(shopId);
-    if (monthCount >= limits.maxInvoicesPerMonth) {
+  // 2.1 Invoice limit check
+  const userSub = await UserSubscription.findOne({ userId: shop.ownerId, status: "active" }).populate("planId");
+  const isFreePlan = !userSub || userSub?.planId?.price === 0;
+
+  if (isFreePlan) {
+    // Free plan: 20 invoices per 24 hours
+    const dailyCount = await getDailyInvoiceCount(shopId);
+    if (dailyCount >= 20) {
       return next(
         new ErrorHandler(
-          `Monthly invoice limit reached (${limits.maxInvoicesPerMonth}). Upgrade your plan.`,
+          "Daily invoice limit reached (20 invoices max per 24 hours for free plan). Please upgrade your plan.",
           403
         )
       );
+    }
+  } else {
+    // Paid plan: Monthly limit
+    const limits = await getUserLimits(shop.ownerId);
+    if (limits.maxInvoicesPerMonth !== -1) {
+      const monthCount = await getMonthlyInvoiceCount(shopId);
+      if (monthCount >= limits.maxInvoicesPerMonth) {
+        return next(
+          new ErrorHandler(
+            `Monthly invoice limit reached (${limits.maxInvoicesPerMonth}). Upgrade your plan.`,
+            403
+          )
+        );
+      }
     }
   }
 
@@ -118,6 +158,13 @@ exports.createInvoice = catchAsyncError(async (req, res, next) => {
     status = "issued",
     date,
   } = req.body;
+
+  // Print limit check
+  if (status === "printed") {
+    if (await isPrintLimitReached(shopId, shop.ownerId)) {
+      return next(new ErrorHandler("Daily print limit reached (20 prints max per 24 hours for free plan). Please upgrade your plan.", 403));
+    }
+  }
 
   // Compute totals server-side to avoid tampering
   const subtotal = items.reduce(
@@ -298,6 +345,13 @@ exports.updateInvoice = catchAsyncError(async (req, res, next) => {
     date,
   } = req.body;
 
+  // Print limit check
+  if (status === "printed" && invoice.status !== "printed") {
+    if (await isPrintLimitReached(shopId, shop.ownerId)) {
+      return next(new ErrorHandler("Daily print limit reached (20 prints max per 24 hours for free plan). Please upgrade your plan.", 403));
+    }
+  }
+
   if (customerName !== undefined) invoice.customerName = customerName;
   if (customerPhone !== undefined) invoice.customerPhone = customerPhone;
   if (customerEmail !== undefined) invoice.customerEmail = customerEmail;
@@ -371,6 +425,13 @@ exports.updateInvoiceStatus = catchAsyncError(async (req, res, next) => {
   const allowed = ["draft", "issued", "paid", "void", "printed"];
   if (!allowed.includes(status)) {
     return next(new ErrorHandler("Invalid status!", 400));
+  }
+
+  // Print limit check for free plan
+  if (status === "printed" && invoice.status !== "printed") {
+    if (await isPrintLimitReached(shopId, shop.ownerId)) {
+      return next(new ErrorHandler("Daily print limit reached (20 prints max per 24 hours for free plan). Please upgrade your plan.", 403));
+    }
   }
 
   invoice.status = status;
