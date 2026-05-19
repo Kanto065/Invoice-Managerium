@@ -14,11 +14,9 @@ const initializeCronJobs = () => {
         console.log('[CRON] Running daily subscription expiration check...');
         try {
             const now = new Date();
-            const gracePeriodMs = 24 * 60 * 60 * 1000;
-            const thresholdDate = new Date(now.getTime() - gracePeriodMs);
 
             const result = await UserSubscription.updateMany(
-                { status: "active", endDate: { $lt: thresholdDate } },
+                { status: "active", endDate: { $lt: now } },
                 { $set: { status: "expired" } }
             );
             console.log(`[CRON] Subscription cleanup: ${result.modifiedCount} marked expired.`);

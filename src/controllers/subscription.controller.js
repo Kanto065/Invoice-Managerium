@@ -64,7 +64,7 @@ exports.createPlan = catchAsyncError(async (req, res, next) => {
 
 // ===> List all plans <===
 exports.listPlans = catchAsyncError(async (req, res, next) => {
-    const plans = await SubscriptionPlan.find().sort({ sortOrder: 1 });
+    const plans = await SubscriptionPlan.find({ isActive: true }).sort({ sortOrder: 1 });
     return res.status(200).json({
         success: true,
         plans,
@@ -197,17 +197,24 @@ exports.purchasePlan = catchAsyncError(async (req, res, next) => {
 exports.mySubscription = catchAsyncError(async (req, res, next) => {
     const userId = req.user._id;
 
-    const activeSub = await UserSubscription.findOne({
+    const sub = await UserSubscription.findOne({
         userId,
         status: { $in: ["active", "pending"] },
     })
         .populate("planId")
         .sort({ createdAt: -1 });
 
-    return res.status(200).json({
-        success: true,
-        subscription: activeSub,
-    });
+    if (!sub) {
+        return res.status(200).json({ success: true, subscription: null });
+    }
+
+    // Real-time expiry check — don't wait for cron
+    if (sub.status === "active" && sub.endDate && new Date(sub.endDate) < new Date()) {
+        await UserSubscription.findByIdAndUpdate(sub._id, { $set: { status: "expired" } });
+        return res.status(200).json({ success: true, subscription: null });
+    }
+
+    return res.status(200).json({ success: true, subscription: sub });
 });
 
 /* ═══════════════════════════════════════════════════════════════════════════ */

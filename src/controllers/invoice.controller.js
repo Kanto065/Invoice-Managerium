@@ -203,10 +203,24 @@ exports.listInvoices = catchAsyncError(async (req, res, next) => {
 
   await assertShopAccess(shopId, userId).catch((e) => next(e));
 
-  const { page = 1, limit = 20, status } = req.query;
+  const { page = 1, limit = 20, status, dateFrom, dateTo } = req.query;
   const skip = (Number(page) - 1) * Number(limit);
   const filter = { shopId, is_deleted: false };
   if (status) filter.status = status;
+
+  if (dateFrom || dateTo) {
+    filter.invoiceDate = {};
+    if (dateFrom) {
+      const start = new Date(dateFrom);
+      start.setHours(0, 0, 0, 0);
+      filter.invoiceDate.$gte = start;
+    }
+    if (dateTo) {
+      const end = new Date(dateTo);
+      end.setHours(23, 59, 59, 999);
+      filter.invoiceDate.$lte = end;
+    }
+  }
 
   const [invoices, total] = await Promise.all([
     Invoice.find(filter)
