@@ -28,6 +28,10 @@ const invoiceSchema = new mongoose.Schema(
             type: String,
             unique: true,
         },
+        invoiceDate: {
+            type: Date,
+            default: Date.now,
+        },
 
         customerId: {
             type: mongoose.Types.ObjectId,

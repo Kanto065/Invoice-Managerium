@@ -473,7 +473,7 @@ exports.deleteDiscount = catchAsyncError(async (req, res, next) => {
 exports.activeInactiveDiscount = catchAsyncError(async (req, res, next) => {
   const id = req.params.id;
   if (!id) {
-    return new ErrorHandler("Product discount id is requried");
+    return next(new ErrorHandler("Product discount id is required", 400));
   }
   const { status } = req.body;
 
@@ -497,7 +497,7 @@ exports.activeInactiveDiscount = catchAsyncError(async (req, res, next) => {
 exports.deleteDiscountTier = catchAsyncError(async (req, res, next) => {
   const id = req.params.id;
   if (!id) {
-    return new ErrorHandler("Product discount tier id is requried");
+    return next(new ErrorHandler("Product discount tier id is required", 400));
   }
   const existTierDisount = await TierDiscount.findById(id);
   if (!existTierDisount) {

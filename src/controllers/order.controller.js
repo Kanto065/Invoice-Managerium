@@ -289,7 +289,7 @@ exports.getMyOrders = catchAsyncError(async (req, res, next) => {
 exports.getSingleOrder = catchAsyncError(async (req, res, next) => {
   const id = req.params.id;
   if (!id) {
-    return new ErrorHandler("Order id is requried");
+    return next(new ErrorHandler("Order id is required", 400));
   }
   const existOrder = await Order.aggregate([
     {
@@ -414,7 +414,7 @@ exports.changeOrderStatus = catchAsyncError(async (req, res, next) => {
 exports.deleteOrder = catchAsyncError(async (req, res, next) => {
   const id = req.params.id;
   if (!id) {
-    return new ErrorHandler("Order id is requried");
+    return next(new ErrorHandler("Order id is required", 400));
   }
   const existOrder = await Order.findById(id);
   if (!existOrder) {

@@ -44,7 +44,7 @@ exports.updateVarient = catchAsyncError(async (req, res, next) => {
   const { productId, sku, price, stock } = req.body;
   const id = req?.params?.id;
   if (!id) {
-    return new ErrorHandler("Varient id is requried!");
+    return next(new ErrorHandler("Varient id is required!", 400));
   }
   const existVarient = await Varient.findById(id);
   if (!existVarient) {
@@ -109,7 +109,7 @@ exports.getAllVarients = catchAsyncError(async (req, res, next) => {
 exports.getSingleVarient = catchAsyncError(async (req, res, next) => {
   const id = req?.params?.id;
   if (!id) {
-    return new ErrorHandler("Varient id is requried!");
+    return next(new ErrorHandler("Varient id is required!", 400));
   }
   const existVarient = await Varient.findById(id);
   if (!existVarient) {

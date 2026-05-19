@@ -103,7 +103,7 @@ exports.getSingleBrand = catchAsyncError(async (req, res, next) => {
 exports.deleteBrand = catchAsyncError(async (req, res, next) => {
   const id = req.params.id;
   if (!id) {
-    return new ErrorHandler("Brand id is requried");
+    return next(new ErrorHandler("Brand id is required", 400));
   }
   const existBrand = await Brand.findById(id);
   if (!existBrand) {
@@ -121,7 +121,7 @@ exports.deleteBrand = catchAsyncError(async (req, res, next) => {
 exports.activeInactiveBrand = catchAsyncError(async (req, res, next) => {
   const id = req?.params?.id;
   if (!id) {
-    return new ErrorHandler("Brand id is requried");
+    return next(new ErrorHandler("Brand id is required", 400));
   }
   const { status } = req.body;
 

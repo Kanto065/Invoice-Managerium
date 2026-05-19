@@ -200,7 +200,7 @@ exports.activeInactiveRating = catchAsyncError(async (req, res, next) => {
 
   const id = req.params.id;
   if (!id) {
-    return new ErrorHandler("Rating id is requried!");
+    return next(new ErrorHandler("Rating id is required!", 400));
   }
   const existRating = await Rating.findById(id);
   if (!existRating) {
@@ -224,7 +224,7 @@ exports.deleteRating = catchAsyncError(async (req, res, next) => {
   const id = req.params.id;
   const { productId } = req.body;
   if (!id) {
-    return new ErrorHandler("Rating id is requried!");
+    return next(new ErrorHandler("Rating id is required!", 400));
   }
 
   const existProduct = await Product.findById(productId);

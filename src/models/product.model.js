@@ -14,7 +14,6 @@ const productSchema = new mongoose.Schema(
     slug: {
       required: true,
       type: String,
-      unique: true,
     },
     varientId: {
       type: mongoose.Types.ObjectId,
@@ -96,6 +95,8 @@ const productSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+productSchema.index({ shopId: 1, slug: 1 }, { unique: true });
 
 const Product =
   mongoose.models.products ?? mongoose.model("products", productSchema);

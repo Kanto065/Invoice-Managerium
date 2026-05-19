@@ -59,7 +59,7 @@ function upgradeSubMailTemplate(name, planName) {
   <body>
     <div class="container">
       <div class="header">
-        <h1>Kanto Invoice</h1>
+        <h1>${process.env.APP_NAME}</h1>
       </div>
       <div class="content">
         <p>Hi ${name},</p>
@@ -70,10 +70,10 @@ function upgradeSubMailTemplate(name, planName) {
         <p>Your shop's limits have been successfully updated. You can now log into your dashboard and take full advantage of your new features!</p>
         
         <p>If you have any questions, feel free to contact our support team.</p>
-        <p>Best regards,<br>The Kanto Invoice Team</p>
+        <p>Best regards,<br>The ${process.env.APP_NAME} Team</p>
       </div>
       <div class="footer">
-        <p>&copy; ${new Date().getFullYear()} Kanto Invoice. All rights reserved.</p>
+        <p>&copy; ${new Date().getFullYear()} ${process.env.APP_NAME}. All rights reserved.</p>
       </div>
     </div>
   </body>

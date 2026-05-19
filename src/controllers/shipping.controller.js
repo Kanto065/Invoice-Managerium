@@ -81,7 +81,7 @@ exports.getSingleShipping = catchAsyncError(async (req, res, next) => {
 exports.deleteShipping = catchAsyncError(async (req, res, next) => {
   const id = req.params.id;
   if (!id) {
-    return new ErrorHandler("Shipping id is requried");
+    return next(new ErrorHandler("Shipping id is required", 400));
   }
   const existShipping = await Shipping.findById(id);
   if (!existShipping) {
