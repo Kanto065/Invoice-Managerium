@@ -108,7 +108,6 @@ module.exports = ({ shop, invoice }) => {
         <div class="footer-text">${shop.receiptConfig?.footerText || 'Thank you for your purchase! We hope to see you again soon.'}</div>
         <div class="support-box">
           ${shop.address?.address_line1 ? `Managed by ${shop.name} • ${shop.address.address_line1}<br>` : ''}
-          For support, contact us at ${process.env.TECH_SUPPORT_NUMBER || "01605742247"}.
         </div>
       </div>
     </div>

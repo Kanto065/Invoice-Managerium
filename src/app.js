@@ -33,40 +33,6 @@ const { default: mongoose } = require("mongoose");
 // Apply CORS middleware first to handle preflight requests
 app.use(cors(corsOption));
 
-// Add CORS headers to all responses as a fallback
-app.use((req, res, next) => {
-  const allowedOrigins = [
-    "https://nanuvaierrosonakothon.com",
-    "http://localhost:3000",
-    "http://localhost:3001",
-    "http://localhost:4000",
-    "https://memobook.shop",
-    "https://www.memobook.shop",
-  ];
-  const origin = req.headers.origin;
-
-  // Allow requests with no origin (like direct browser access, Postman, curl)
-  if (!origin) {
-    res.header("Access-Control-Allow-Origin", "*");
-  } else if (allowedOrigins.includes(origin)) {
-    res.header("Access-Control-Allow-Origin", origin);
-  }
-
-  res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
-  res.header(
-    "Access-Control-Allow-Headers",
-    "Origin, X-Requested-With, Content-Type, Accept, Authorization"
-  );
-  res.header("Access-Control-Allow-Credentials", "true");
-
-  // Handle preflight requests
-  if (req.method === "OPTIONS") {
-    return res.status(200).end();
-  }
-
-  next();
-});
-
 app.use(express.json({ limit: "100mb" }));
 app.use(express.urlencoded({ extended: false, limit: "100mb" }));
 app.use(cookieParser());

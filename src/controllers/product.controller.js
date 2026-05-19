@@ -218,10 +218,10 @@ exports.updateProduct = catchAsyncError(async (req, res, next) => {
 
 // ==> get all products <==
 exports.getAllProduct = catchAsyncError(async (req, res, next) => {
-  // Pagination
+  // Pagination (optional – omit `limit` query param to fetch all)
   const page = parseInt(req.query.page) || 1;
-  const limit = parseInt(req.query.limit) || 10;
-  const skip = (page - 1) * limit;
+  const limit = req.query.limit ? parseInt(req.query.limit) : null;
+  const skip = limit ? (page - 1) * limit : 0;
 
   // Query params
   const { activeOnly, type, name, varient, location, demoOnly, shopId } = req.query;
@@ -403,6 +403,11 @@ exports.getAllProduct = catchAsyncError(async (req, res, next) => {
     },
   ];
 
+  // Pagination stages (only applied when limit is provided)
+  const paginationStages = limit
+    ? [{ $skip: skip }, { $limit: limit }]
+    : [];
+
   // Final Aggregation
   const resData = await Product.aggregate([
     {
@@ -423,8 +428,7 @@ exports.getAllProduct = catchAsyncError(async (req, res, next) => {
             ]
             : []),
           ...(Object.keys(sort).length ? [{ $sort: sort }] : []),
-          { $skip: skip },
-          { $limit: limit },
+          ...paginationStages,
         ],
         total: [
           { $match: match },
