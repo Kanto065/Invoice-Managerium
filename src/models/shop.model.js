@@ -61,5 +61,30 @@ const shopSchema = new mongoose.Schema(
 // Index for finding shops by owner
 shopSchema.index({ ownerId: 1 });
 
+// ── MySQL dual-write hooks ────────────────────────────────────────────────────
+const { syncShop, deleteShop } = require("../lib/mysql-sync");
+
+shopSchema.post("save", function (doc) { syncShop(doc); });
+
+shopSchema.post("findOneAndUpdate", function (doc) { if (doc) syncShop(doc); });
+
+shopSchema.pre("updateOne", { document: false, query: true }, async function () {
+  this._syncFilter = this.getFilter();
+});
+shopSchema.post("updateOne", { document: false, query: true }, async function () {
+  if (!this._syncFilter) return;
+  const doc = await this.model.findOne(this._syncFilter).lean();
+  if (doc) syncShop(doc);
+});
+
+shopSchema.pre("deleteOne", { document: false, query: true }, async function () {
+  const doc = await this.model.findOne(this.getFilter()).lean();
+  this._deletedId = doc?._id?.toString();
+});
+shopSchema.post("deleteOne", { document: false, query: true }, function () {
+  if (this._deletedId) deleteShop(this._deletedId);
+});
+// ─────────────────────────────────────────────────────────────────────────────
+
 const Shop = mongoose.models.shops ?? mongoose.model("shops", shopSchema);
 module.exports = Shop;

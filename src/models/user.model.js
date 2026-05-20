@@ -81,5 +81,30 @@ const userSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+// ── MySQL dual-write hooks ────────────────────────────────────────────────────
+const { syncUser, deleteUser } = require("../lib/mysql-sync");
+
+userSchema.post("save", function (doc) { syncUser(doc); });
+
+userSchema.post("findOneAndUpdate", function (doc) { if (doc) syncUser(doc); });
+
+userSchema.pre("updateOne", { document: false, query: true }, async function () {
+  this._syncFilter = this.getFilter();
+});
+userSchema.post("updateOne", { document: false, query: true }, async function () {
+  if (!this._syncFilter) return;
+  const doc = await this.model.findOne(this._syncFilter).lean();
+  if (doc) syncUser(doc);
+});
+
+userSchema.pre("deleteOne", { document: false, query: true }, async function () {
+  const doc = await this.model.findOne(this.getFilter()).lean();
+  this._deletedId = doc?._id?.toString();
+});
+userSchema.post("deleteOne", { document: false, query: true }, function () {
+  if (this._deletedId) deleteUser(this._deletedId);
+});
+// ─────────────────────────────────────────────────────────────────────────────
+
 const User = mongoose.models.users ?? mongoose.model("users", userSchema);
 module.exports = User;

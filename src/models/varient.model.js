@@ -11,6 +11,31 @@ const varientSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+// ── MySQL dual-write hooks ────────────────────────────────────────────────────
+const { syncVarient, deleteVarient } = require("../lib/mysql-sync");
+
+varientSchema.post("save", function (doc) { syncVarient(doc); });
+
+varientSchema.post("findOneAndUpdate", function (doc) { if (doc) syncVarient(doc); });
+
+varientSchema.pre("updateOne", { document: false, query: true }, async function () {
+  this._syncFilter = this.getFilter();
+});
+varientSchema.post("updateOne", { document: false, query: true }, async function () {
+  if (!this._syncFilter) return;
+  const doc = await this.model.findOne(this._syncFilter).lean();
+  if (doc) syncVarient(doc);
+});
+
+varientSchema.pre("deleteOne", { document: false, query: true }, async function () {
+  const doc = await this.model.findOne(this.getFilter()).lean();
+  this._deletedId = doc?._id?.toString();
+});
+varientSchema.post("deleteOne", { document: false, query: true }, function () {
+  if (this._deletedId) deleteVarient(this._deletedId);
+});
+// ─────────────────────────────────────────────────────────────────────────────
+
 const Varient =
   mongoose.models.varients ?? mongoose.model("varients", varientSchema);
 module.exports = Varient;

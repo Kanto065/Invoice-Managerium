@@ -127,6 +127,31 @@ const invoiceSchema = new mongoose.Schema(
 // Index for per-shop invoice lookups
 invoiceSchema.index({ shopId: 1, createdAt: -1 });
 
+// ── MySQL dual-write hooks ────────────────────────────────────────────────────
+const { syncInvoice, deleteInvoice } = require("../lib/mysql-sync");
+
+invoiceSchema.post("save", function (doc) { syncInvoice(doc); });
+
+invoiceSchema.post("findOneAndUpdate", function (doc) { if (doc) syncInvoice(doc); });
+
+invoiceSchema.pre("updateOne", { document: false, query: true }, async function () {
+  this._syncFilter = this.getFilter();
+});
+invoiceSchema.post("updateOne", { document: false, query: true }, async function () {
+  if (!this._syncFilter) return;
+  const doc = await this.model.findOne(this._syncFilter).lean();
+  if (doc) syncInvoice(doc);
+});
+
+invoiceSchema.pre("deleteOne", { document: false, query: true }, async function () {
+  const doc = await this.model.findOne(this.getFilter()).lean();
+  this._deletedId = doc?._id?.toString();
+});
+invoiceSchema.post("deleteOne", { document: false, query: true }, function () {
+  if (this._deletedId) deleteInvoice(this._deletedId);
+});
+// ─────────────────────────────────────────────────────────────────────────────
+
 const Invoice =
     mongoose.models.invoices ?? mongoose.model("invoices", invoiceSchema);
 module.exports = Invoice;

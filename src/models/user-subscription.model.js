@@ -71,6 +71,31 @@ const userSubscriptionSchema = new mongoose.Schema(
 // Index for quick lookup of active subscription per user
 userSubscriptionSchema.index({ userId: 1, status: 1 });
 
+// ── MySQL dual-write hooks ────────────────────────────────────────────────────
+const { syncUserSubscription, deleteUserSubscription } = require("../lib/mysql-sync");
+
+userSubscriptionSchema.post("save", function (doc) { syncUserSubscription(doc); });
+
+userSubscriptionSchema.post("findOneAndUpdate", function (doc) { if (doc) syncUserSubscription(doc); });
+
+userSubscriptionSchema.pre("updateOne", { document: false, query: true }, async function () {
+  this._syncFilter = this.getFilter();
+});
+userSubscriptionSchema.post("updateOne", { document: false, query: true }, async function () {
+  if (!this._syncFilter) return;
+  const doc = await this.model.findOne(this._syncFilter).lean();
+  if (doc) syncUserSubscription(doc);
+});
+
+userSubscriptionSchema.pre("deleteOne", { document: false, query: true }, async function () {
+  const doc = await this.model.findOne(this.getFilter()).lean();
+  this._deletedId = doc?._id?.toString();
+});
+userSubscriptionSchema.post("deleteOne", { document: false, query: true }, function () {
+  if (this._deletedId) deleteUserSubscription(this._deletedId);
+});
+// ─────────────────────────────────────────────────────────────────────────────
+
 const UserSubscription =
     mongoose.models.user_subscriptions ??
     mongoose.model("user_subscriptions", userSubscriptionSchema);

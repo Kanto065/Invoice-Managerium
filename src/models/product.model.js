@@ -98,6 +98,31 @@ const productSchema = new mongoose.Schema(
 
 productSchema.index({ shopId: 1, slug: 1 }, { unique: true });
 
+// ── MySQL dual-write hooks ────────────────────────────────────────────────────
+const { syncProduct, deleteProduct } = require("../lib/mysql-sync");
+
+productSchema.post("save", function (doc) { syncProduct(doc); });
+
+productSchema.post("findOneAndUpdate", function (doc) { if (doc) syncProduct(doc); });
+
+productSchema.pre("updateOne", { document: false, query: true }, async function () {
+  this._syncFilter = this.getFilter();
+});
+productSchema.post("updateOne", { document: false, query: true }, async function () {
+  if (!this._syncFilter) return;
+  const doc = await this.model.findOne(this._syncFilter).lean();
+  if (doc) syncProduct(doc);
+});
+
+productSchema.pre("deleteOne", { document: false, query: true }, async function () {
+  const doc = await this.model.findOne(this.getFilter()).lean();
+  this._deletedId = doc?._id?.toString();
+});
+productSchema.post("deleteOne", { document: false, query: true }, function () {
+  if (this._deletedId) deleteProduct(this._deletedId);
+});
+// ─────────────────────────────────────────────────────────────────────────────
+
 const Product =
   mongoose.models.products ?? mongoose.model("products", productSchema);
 module.exports = Product;
