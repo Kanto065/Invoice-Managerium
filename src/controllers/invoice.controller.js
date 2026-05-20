@@ -227,6 +227,7 @@ exports.listInvoices = catchAsyncError(async (req, res, next) => {
     filter.$or = [
       { customerName: regex },
       { invoiceNumber: regex },
+      { customerPhone: regex },
     ];
   }
 
