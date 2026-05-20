@@ -203,7 +203,7 @@ exports.listInvoices = catchAsyncError(async (req, res, next) => {
 
   await assertShopAccess(shopId, userId).catch((e) => next(e));
 
-  const { page = 1, limit = 20, status, dateFrom, dateTo } = req.query;
+  const { page = 1, limit = 20, status, dateFrom, dateTo, search } = req.query;
   const skip = (Number(page) - 1) * Number(limit);
   const filter = { shopId, is_deleted: false };
   if (status) filter.status = status;
@@ -220,6 +220,14 @@ exports.listInvoices = catchAsyncError(async (req, res, next) => {
       end.setHours(23, 59, 59, 999);
       filter.invoiceDate.$lte = end;
     }
+  }
+
+  if (search) {
+    const regex = { $regex: search, $options: "i" };
+    filter.$or = [
+      { customerName: regex },
+      { invoiceNumber: regex },
+    ];
   }
 
   const [invoices, total] = await Promise.all([
